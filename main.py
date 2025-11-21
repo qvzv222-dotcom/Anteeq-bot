@@ -1123,7 +1123,6 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=-2)
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_and_set_creator_rank), group=-1)
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
@@ -1174,8 +1173,6 @@ def main():
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
-    if application.job_queue is not None:
-        application.job_queue.run_repeating(check_expired_mutes, interval=300, first=5)
 
     print("Бот запущен...")
     print("Добавьте бота в группу и дайте ему права администратора!")
