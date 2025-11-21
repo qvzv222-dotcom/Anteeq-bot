@@ -445,7 +445,7 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ В чате нет установленных ников")
         return
 
-    nicks_text = "📋 <b>Список ников чата</b>\n\n"
+    nicks_text = "📋 Список ников чата:\n\n"
     for i, (user_id, nick) in enumerate(nicks.items(), 1):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
