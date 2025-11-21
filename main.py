@@ -678,6 +678,9 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для раздела '{section_names[section]}' теперь требуется ранг: {rank_names[rank]}"
     )
 
+async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Шо")
+
 async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
 
@@ -707,6 +710,8 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_and_set_creator_rank), group=-1)
+    
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!код чата$'), chat_code_command))
