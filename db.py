@@ -504,6 +504,21 @@ def get_mute_time(chat_id: int, user_id: int) -> Optional[datetime]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return None
 
+def get_expired_mutes() -> List[tuple]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT chat_id, user_id FROM mutes
+            WHERE unmute_time <= NOW()
+        ''')
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return results
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
 def find_chat_by_code(chat_code: str) -> Optional[int]:
     try:
         conn = get_connection()

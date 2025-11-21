@@ -51,6 +51,23 @@ def has_access(chat_id: int, user_id: int, section: str) -> bool:
     
     return user_rank >= required_rank
 
+async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
+    expired_mutes = db.get_expired_mutes()
+    
+    for chat_id, user_id in expired_mutes:
+        try:
+            user = await context.bot.get_chat_member(chat_id, user_id)
+            user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
+            await context.bot.send_message(
+                chat_id,
+                f"✅ Срок наказания {user_link} истек. Пользователь размучен.",
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logging.error(f"Ошибка при отправке уведомления об истечении мута: {str(e)}")
+        finally:
+            db.remove_mute(chat_id, user_id)
+
 async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.from_user:
         return
@@ -1041,6 +1058,8 @@ def main():
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
+    
+    application.job_queue.run_repeating(check_expired_mutes, interval=10, first=5)
 
     print("Бот запущен...")
     print("Добавьте бота в группу и дайте ему права администратора!")
