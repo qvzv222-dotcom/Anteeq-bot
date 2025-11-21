@@ -577,7 +577,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'мут [время в минутах]'")
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'мут [время] [с/м]'\nПример: мут 10 с (10 секунд) или мут 5 м (5 минут)")
         return
 
     target_user = update.message.reply_to_message.from_user
@@ -585,13 +585,30 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = text.split()
     
     duration = 60
+    unit = "минут"
+    
     if len(parts) > 1:
         try:
             duration = int(parts[1])
+            if len(parts) > 2:
+                suffix = parts[2].lower()
+                if suffix in ['с', 'сек', 'секунд']:
+                    duration = duration
+                    unit = "секунд"
+                elif suffix in ['м', 'мин', 'минут']:
+                    duration = duration
+                    unit = "минут"
+            else:
+                unit = "минут"
         except ValueError:
             duration = 60
+            unit = "минут"
 
-    unmute_time = datetime.now() + timedelta(minutes=duration)
+    if unit == "секунд":
+        unmute_time = datetime.now() + timedelta(seconds=duration)
+    else:
+        unmute_time = datetime.now() + timedelta(minutes=duration)
+    
     db.set_mute(chat_id, target_user.id, unmute_time)
 
     try:
@@ -602,7 +619,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             until_date=unmute_time
         )
         await update.message.reply_text(
-            f"Пользователь {target_user.first_name} замучен на {duration} минут"
+            f"Пользователь {target_user.first_name} замучен на {duration} {unit}"
         )
     except Exception as e:
         await update.message.reply_text(f"Ошибка при муте: {str(e)}")
