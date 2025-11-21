@@ -38,7 +38,7 @@ def init_database():
             chat_code VARCHAR(10),
             welcome_message TEXT DEFAULT 'ANTEEQ',
             rules TEXT DEFAULT 'Правила чата не установлены',
-            access_control JSONB DEFAULT '{"1.1": 1, "1.2": 1, "1.3": 3, "1.4": 1, "1.5": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4}'::jsonb,
+            access_control JSONB DEFAULT '{"1.1": 1, "1.2": 1, "1.3": 3, "1.4": 1, "1.5": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4, "7": 1}'::jsonb,
             link_posting_rank INT DEFAULT 1,
             award_giving_rank INT DEFAULT 3
         )

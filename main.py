@@ -312,6 +312,40 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admins_text += f"📊 <i>Всего администраторов: {len(admins)}</i>"
     await update.message.reply_text(admins_text.strip(), parse_mode='HTML')
 
+async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not has_access(chat_id, user_id, "7"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+    
+    try:
+        chat = await context.bot.get_chat(chat_id)
+        members_count = chat.get_members_count()
+    except:
+        members_count = 0
+    
+    if members_count == 0:
+        await update.message.reply_text("В чате нет участников")
+        return
+    
+    mentions = "🔔 <b>СБОР КЛАНА!</b>\n\n"
+    try:
+        admins = db.get_all_admins(chat_id)
+        for user_id_admin in admins.keys():
+            try:
+                user = await context.bot.get_chat_member(chat_id, user_id_admin)
+                mention = f"<a href='tg://user?id={user_id_admin}'>{user.user.first_name}</a>"
+                mentions += mention + " "
+            except:
+                continue
+    except:
+        pass
+    
+    mentions += f"\n\n📢 Собрание объявлено!"
+    await update.message.reply_text(mentions, parse_mode='HTML')
+
 async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
@@ -990,6 +1024,8 @@ def get_section_from_command(command: str) -> str:
         return "5"
     elif command_lower == "награды":
         return "6"
+    elif command_lower == "сбор":
+        return "7"
     else:
         return None
 
@@ -1153,6 +1189,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^приветствие$'), show_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^админы$'), show_admins))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^сбор$'), gather_members))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ранг'), set_rank))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник другому\s+'), set_nick_other))
