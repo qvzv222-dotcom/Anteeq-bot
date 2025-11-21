@@ -84,9 +84,31 @@ def init_database():
         )
     ''')
     
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS awards (
+            id SERIAL PRIMARY KEY,
+            chat_id BIGINT,
+            user_id BIGINT,
+            award_name VARCHAR(255),
+            award_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE
+        )
+    ''')
+    
     conn.commit()
     cur.close()
     conn.close()
+    
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('ALTER TABLE chats ADD COLUMN link_posting_rank INT DEFAULT 1')
+        conn.commit()
+        cur.close()
+        conn.close()
+    except:
+        pass
+    
     print("База данных инициализирована")
 
 def ensure_chat_exists(chat_id: int):
@@ -403,6 +425,56 @@ def set_link_posting_rank(chat_id: int, rank: int):
     conn.commit()
     cur.close()
     conn.close()
+
+def add_award(chat_id: int, user_id: int, award_name: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        INSERT INTO awards (chat_id, user_id, award_name)
+        VALUES (%s, %s, %s)
+    ''', (chat_id, user_id, award_name))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def get_user_awards(chat_id: int, user_id: int) -> List[str]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT award_name FROM awards
+        WHERE chat_id = %s AND user_id = %s
+        ORDER BY award_date DESC
+    ''', (chat_id, user_id))
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [r[0] for r in results]
+
+def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT DISTINCT a.user_id FROM admins a
+        WHERE a.chat_id = %s
+        ORDER BY a.rank DESC, a.user_id
+    ''', (chat_id,))
+    user_ids = [r[0] for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    
+    users = []
+    for user_id in user_ids:
+        rank = get_user_rank(chat_id, user_id)
+        nick = get_user_nick(chat_id, user_id)
+        awards = get_user_awards(chat_id, user_id)
+        users.append({
+            'user_id': user_id,
+            'rank': rank,
+            'nick': nick,
+            'awards': awards
+        })
+    
+    return users
 
 def import_chat_settings(target_chat_id: int, source_chat_id: int):
     ensure_chat_exists(target_chat_id)

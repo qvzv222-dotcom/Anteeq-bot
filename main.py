@@ -652,6 +652,99 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logging.error(f"Ошибка при бане за ссылку: {str(e)}")
 
+async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not has_access(chat_id, user_id, "3"):
+        await update.message.reply_text("Недостаточно прав для выдачи наград")
+        return
+    
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    if len(parts) < 2:
+        await update.message.reply_text(
+            "Использование:\n"
+            "1. Ответьте на сообщение и напишите: !наградить {название награды}\n"
+            "2. Или: !наградить @username {название награды}"
+        )
+        return
+    
+    award_name = parts[1]
+    target_user_id = None
+    
+    if update.message.reply_to_message:
+        target_user_id = update.message.reply_to_message.from_user.id
+    else:
+        if award_name.startswith('@'):
+            parts_award = award_name.split(maxsplit=1)
+            username = parts_award[0][1:]
+            award_name = parts_award[1] if len(parts_award) > 1 else "Награда"
+            
+            try:
+                member = await context.bot.get_chat_member(chat_id, f"@{username}")
+                target_user_id = member.user.id
+            except Exception as e:
+                await update.message.reply_text(f"Не найден пользователь @{username}")
+                return
+    
+    if not target_user_id:
+        await update.message.reply_text("Укажите пользователя или ответьте на сообщение")
+        return
+    
+    db.add_award(chat_id, target_user_id, award_name)
+    
+    try:
+        target_user = await context.bot.get_chat_member(chat_id, target_user_id)
+        await update.message.reply_text(f"✨ {target_user.user.first_name} получил награду: {award_name}")
+    except:
+        await update.message.reply_text(f"✨ Пользователь получил награду: {award_name}")
+
+async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    
+    users = db.get_all_users_in_chat(chat_id)
+    
+    if not users:
+        await update.message.reply_text("Нет участников")
+        return
+    
+    rank_names = {
+        0: "Участник",
+        1: "Модератор чата",
+        2: "Наборщик",
+        3: "Заместитель главы клана",
+        4: "Глава клана",
+        5: "Глава альянса"
+    }
+    
+    current_rank = None
+    message = ""
+    
+    for user in users:
+        if user['rank'] != current_rank:
+            if message:
+                message += "\n"
+            current_rank = user['rank']
+            message += f"\n📊 {rank_names.get(current_rank, 'Неизвестный ранг')}:\n"
+        
+        nick_display = user['nick'] if user['nick'] else f"@{user['user_id']}"
+        message += f"  • {nick_display}"
+        
+        if user['awards']:
+            awards_str = ", ".join(user['awards'])
+            message += f" | {awards_str}"
+        else:
+            message += f" | нет наград"
+        
+        message += "\n"
+    
+    if message:
+        await update.message.reply_text(message)
+    else:
+        await update.message.reply_text("Нет участников")
+
 def get_section_from_command(command: str) -> str:
     command_lower = command.lower().strip()
     
@@ -828,6 +921,9 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^мут'), mute_user))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^дк'), access_control_command))
+    
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!наградить'), reward_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^участники$'), show_participants))
 
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|admins_help|warns_help|rules_help)"))
 
