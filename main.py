@@ -553,7 +553,7 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
             warn_date = datetime.fromisoformat(warn_date.replace('Z', '+00:00'))
         
         date_str = warn_date.strftime("%d.%m.%Y %H:%M")
-        expires_date = (warn_date + timedelta(days=30)).strftime("%d.%m.%Y %H:%M")
+        expires_date = (warn_date + timedelta(days=7)).strftime("%d.%m.%Y %H:%M")
         
         warns_text += f"""⚠️ <b>{user_link} предупреждения ({i}/{3})</b>
 📅 Выдано: {date_str}
