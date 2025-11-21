@@ -312,6 +312,22 @@ def get_all_admins(chat_id: int) -> Dict[int, int]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return {}
 
+def get_all_members(chat_id: int) -> List[int]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT DISTINCT user_id FROM admins WHERE chat_id = %s
+            UNION
+            SELECT DISTINCT user_id FROM nicks WHERE chat_id = %s
+        ''', (chat_id, chat_id))
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [user_id for (user_id,) in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
 def get_nick(chat_id: int, user_id: int) -> Optional[str]:
     try:
         conn = get_connection()

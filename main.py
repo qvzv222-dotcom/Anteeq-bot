@@ -320,30 +320,27 @@ async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
     
-    try:
-        chat = await context.bot.get_chat(chat_id)
-        members_count = chat.get_members_count()
-    except:
-        members_count = 0
+    members = db.get_all_members(chat_id)
     
-    if members_count == 0:
+    if not members:
         await update.message.reply_text("В чате нет участников")
         return
     
     mentions = "🔔 <b>СБОР КЛАНА!</b>\n\n"
+    count = 0
     try:
-        admins = db.get_all_admins(chat_id)
-        for user_id_admin in admins.keys():
+        for member_id in members:
             try:
-                user = await context.bot.get_chat_member(chat_id, user_id_admin)
-                mention = f"<a href='tg://user?id={user_id_admin}'>{user.user.first_name}</a>"
+                user = await context.bot.get_chat_member(chat_id, member_id)
+                mention = f"<a href='tg://user?id={member_id}'>{user.user.first_name}</a>"
                 mentions += mention + " "
+                count += 1
             except:
                 continue
     except:
         pass
     
-    mentions += f"\n\n📢 Собрание объявлено!"
+    mentions += f"\n\n📢 Собрание объявлено! ({count} участников)"
     await update.message.reply_text(mentions, parse_mode='HTML')
 
 async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
