@@ -60,7 +60,7 @@ async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
             user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
             await context.bot.send_message(
                 chat_id,
-                f"✅ Срок наказания {user_link} истек. Пользователь размучен.",
+                f" Срок наказания {user_link} истек. Пользователь размучен.",
                 parse_mode='HTML'
             )
         except Exception as e:
