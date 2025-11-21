@@ -449,7 +449,10 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i, (user_id, nick) in enumerate(nicks.items(), 1):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
-            user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
+            full_name = user.user.first_name
+            if user.user.last_name:
+                full_name += f" {user.user.last_name}"
+            user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
             nicks_text += f"{i}️⃣ <b>{nick}</b> — {user_link}\n"
         except:
             continue
