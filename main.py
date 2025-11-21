@@ -527,11 +527,18 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not warns:
         user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
-        await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
+        await update.message.reply_text(f"✅ У {user_link} нет предупреждений", parse_mode='HTML')
         return
 
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
-    warns_text = f"Предупреждения {user_link} ({len(warns)}/3):\n"
+    total_warns = len(warns)
+    
+    warns_text = f"""
+╔════════════════════════════════════╗
+║       📋 ИСТОРИЯ ПРЕДУПРЕЖДЕНИЙ    ║
+╚════════════════════════════════════╝
+
+"""
 
     for i, warn in enumerate(warns, 1):
         try:
@@ -541,9 +548,19 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
             admin_link = "Неизвестно"
 
         date_str = warn['warn_date'].strftime("%d.%m.%Y %H:%M")
-        warns_text += f"{i}. {date_str} - {admin_link}: {warn['reason']}\n"
+        
+        warns_text += f"""⚠️ <b>{user_link} получает предупреждение ({i}/{3})</b>
+📅 {date_str}
+📝 Причина: {warn['reason']}
+🛡️ Модератор: {admin_link}
 
-    await update.message.reply_text(warns_text, parse_mode='HTML')
+"""
+
+    warns_text += f"""<b>Итого:</b> <b>{total_warns}/3</b> предупреждений"""
+    if total_warns >= 3:
+        warns_text += f" ❌ <b>БАН!</b>"
+
+    await update.message.reply_text(warns_text.strip(), parse_mode='HTML')
 
 async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
