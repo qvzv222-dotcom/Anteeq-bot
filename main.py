@@ -610,6 +610,28 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка при размуте: {str(e)}")
 
+def get_section_from_command(command: str) -> str:
+    command_lower = command.lower().strip()
+    
+    if command_lower in ["мут", "размут"]:
+        return "1.1"
+    elif command_lower in ["бан", "разбан"]:
+        return "1.2"
+    elif command_lower in ["варн", "пред"]:
+        return "1.3"
+    elif command_lower in ["+ник", "-ник"]:
+        return "2.1"
+    elif command_lower in ["+ник другому", "-ник другому"]:
+        return "2.2"
+    elif command_lower in ["правила", "+правила"]:
+        return "3.1"
+    elif command_lower == "+приветствие":
+        return "3.2"
+    elif command_lower == "кто админ":
+        return "3.1"
+    else:
+        return None
+
 async def access_control_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
@@ -619,42 +641,57 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     text = update.message.text.strip()
-    parts = text.split()
+    parts = text.split(maxsplit=1)
     
-    if len(parts) < 3:
+    if len(parts) < 2:
         await update.message.reply_text(
-            "Использование: дк [раздел] [ранг]\n\n"
-            "Разделы:\n"
-            "1 - Мут, Бан, Предупреждения\n"
-            "  Мут/снятие - Модератор чата (1)\n"
-            "  Бан/снятие - Заместитель главы клана (3)\n"
-            "  Предупреждения - Модератор чата (1)\n\n"
-            "2 - Ники\n"
-            "  Ники себе - Участник (0)\n"
-            "  Ники другим - Наборщик (2)\n\n"
-            "3 - Правила, Приветствие\n"
-            "  Ранг доступа: Заместитель главы клана (3)\n\n"
-            "4 - Доступ к команде ДК\n"
-            "  Ранг доступа: Глава клана (4)\n\n"
-            "Ранги: 0-5 (0 - Участник, 5 - Глава альянса)"
+            "Использование: дк {команда} {требуемый ранг}\n\n"
+            "Примеры:\n"
+            "дк мут 2\n"
+            "дк размут 2\n"
+            "дк бан 3\n"
+            "дк разбан 3\n"
+            "дк варн 1\n"
+            "дк +ник 0\n"
+            "дк -ник 0\n"
+            "дк +ник другому 2\n"
+            "дк -ник другому 2\n"
+            "дк правила 3\n"
+            "дк +правила 3\n"
+            "дк +приветствие 3\n"
+            "дк кто админ 3\n\n"
+            "Ранги: 0-5\n"
+            "0 - Участник\n"
+            "1 - Модератор чата\n"
+            "2 - Наборщик\n"
+            "3 - Заместитель главы клана\n"
+            "4 - Глава клана\n"
+            "5 - Глава альянса"
         )
         return
 
-    section = parts[1]
+    command_part = parts[1]
+    cmd_parts = command_part.rsplit(maxsplit=1)
+    
+    if len(cmd_parts) < 2:
+        await update.message.reply_text("Использование: дк {команда} {требуемый ранг}")
+        return
+    
+    command_name = cmd_parts[0]
     try:
-        rank = int(parts[2])
+        rank = int(cmd_parts[1])
         if rank < 0 or rank > 5:
             raise ValueError
     except ValueError:
         await update.message.reply_text("Ранг должен быть числом от 0 до 5")
         return
 
-    access_control = db.get_access_control(chat_id)
-    
-    if section not in access_control:
-        await update.message.reply_text("Неверный раздел")
+    section = get_section_from_command(command_name)
+    if section is None:
+        await update.message.reply_text(f"Неизвестная команда: {command_name}")
         return
 
+    access_control = db.get_access_control(chat_id)
     access_control[section] = rank
     db.set_access_control(chat_id, access_control)
 
@@ -679,7 +716,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
     }
 
     await update.message.reply_text(
-        f"Для раздела '{section_names[section]}' теперь требуется ранг: {rank_names[rank]}"
+        f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
