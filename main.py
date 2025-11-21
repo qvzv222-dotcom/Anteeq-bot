@@ -101,7 +101,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   • <code>ники</code> - список всех ников
 
 <b>👑 АДМИНИСТРИРОВАНИЕ</b>
-  • <code>кто админ</code> - список администраторов
+  • <code>админы</code> - список администраторов
   • <code>дк</code> - управление правами доступа
 
 <b>⚠️ СИСТЕМА НАКАЗАНИЙ</b>
@@ -141,7 +141,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "admins_help":
         text = """<b>👑 АДМИНИСТРАТОРЫ</b>
 
-<code>кто админ</code> - показать список администраторов чата
+<code>админы</code> - показать список администраторов чата
 
 <code>дк</code> - открыть панель управления доступом
 Позволяет настроить минимальный ранг для:
@@ -973,7 +973,7 @@ def get_section_from_command(command: str) -> str:
         return "3.1"
     elif command_lower == "+приветствие":
         return "3.2"
-    elif command_lower == "кто админ":
+    elif command_lower == "админы":
         return "3.1"
     elif command_lower == "ссылки":
         return "5"
@@ -1029,7 +1029,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             f"3.2. ✍️ Изменить правила: <i>+правила</i> {rank_emoji[r_3_1]}\n"
             f"3.3. 👋 Сообщение приветствия: <i>приветствие</i> {rank_emoji[r_3_2]}\n"
             f"3.4. 📢 Изменить приветствие: <i>+приветствие</i> {rank_emoji[r_3_2]}\n"
-            f"3.5. 👨‍💼 Список администраторов: <i>кто админ</i> {rank_emoji[r_3_1]}\n\n"
+            f"3.5. 👨‍💼 Список администраторов: <i>админы</i> {rank_emoji[r_3_1]}\n\n"
             "🔵 <b>РАЗДЕЛ 4: Администраторские</b>\n"
             f"4.1. 🛡️ Доступ к командам: <i>дк</i> {rank_emoji[r_4]}\n"
             f"4.2. 🔗 Разрешить ссылки: <i>дк ссылки [ранг]</i> {rank_emoji[link_posting_rank]}\n\n"
@@ -1141,7 +1141,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-завещание'), remove_will))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^приветствие$'), show_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто админ'), show_admins))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^админы$'), show_admins))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ранг'), set_rank))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник другому\s+'), set_nick_other))
