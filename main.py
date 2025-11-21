@@ -442,19 +442,26 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     nicks = db.get_all_nicks(chat_id)
 
     if not nicks:
-        await update.message.reply_text("В чате нет установленных ников")
+        await update.message.reply_text("✅ В чате нет установленных ников")
         return
 
-    nicks_text = "Ники участников:\n"
+    nicks_text = """
+⠀╔════════════════════════════════════╗
+║ㅤㅤㅤㅤㅤ 👤 СПИСОК НИКОВㅤㅤㅤㅤㅤ║
+⠀╚════════════════════════════════════╝
+
+"""
     for i, (user_id, nick) in enumerate(nicks.items(), 1):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
+            user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
             username = f"@{user.user.username}" if user.user.username else "без юзернейма"
-            nicks_text += f"{i}. {nick} - {username}\n"
+            nicks_text += f"{i}️⃣ <b>{nick}</b> — {user_link} ({username})\n"
         except:
             continue
 
-    await update.message.reply_text(nicks_text)
+    nicks_text += f"\n📊 <i>Всего ников: {len(nicks)}</i>"
+    await update.message.reply_text(nicks_text.strip(), parse_mode='HTML')
 
 async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
