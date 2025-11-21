@@ -224,11 +224,12 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
             rank_name = rank_names.get(rank, "Неизвестно")
-            admins_text += f"• {user.user.first_name} - {rank_name}\n"
+            user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
+            admins_text += f"• {user_link} - {rank_name}\n"
         except:
             continue
 
-    await update.message.reply_text(admins_text)
+    await update.message.reply_text(admins_text, parse_mode='HTML')
 
 async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -431,15 +432,18 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     db.add_warn(chat_id, target_user.id, user_id, reason)
     warn_count = db.get_warn_count(chat_id, target_user.id)
+    user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
 
     if warn_count >= 3:
         db.add_ban(chat_id, target_user.id)
         await update.message.reply_text(
-            f"Пользователь {target_user.first_name} получил 3 предупреждения и был забанен"
+            f"{user_link} получил 3 предупреждения и был забанен",
+            parse_mode='HTML'
         )
     else:
         await update.message.reply_text(
-            f"Пользователь {target_user.first_name} получил предупреждение ({warn_count}/3)\nПричина: {reason}"
+            f"{user_link} получил предупреждение ({warn_count}/3)\nПричина: {reason}",
+            parse_mode='HTML'
         )
 
 async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -452,22 +456,24 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     warns = db.get_warns(chat_id, target_user.id)
     
     if not warns:
-        await update.message.reply_text(f"У пользователя {target_user.first_name} нет предупреждений")
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
         return
 
-    warns_text = f"Предупреждения пользователя {target_user.first_name} ({len(warns)}/3):\n"
+    user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+    warns_text = f"Предупреждения {user_link} ({len(warns)}/3):\n"
 
     for i, warn in enumerate(warns, 1):
         try:
             admin = await context.bot.get_chat_member(chat_id, warn['from_user_id'])
-            admin_name = admin.user.first_name
+            admin_link = f"<a href='tg://user?id={warn['from_user_id']}'>{admin.user.first_name}</a>"
         except:
-            admin_name = "Неизвестно"
+            admin_link = "Неизвестно"
 
         date_str = warn['warn_date'].strftime("%d.%m.%Y %H:%M")
-        warns_text += f"{i}. {date_str} - {admin_name}: {warn['reason']}\n"
+        warns_text += f"{i}. {date_str} - {admin_link}: {warn['reason']}\n"
 
-    await update.message.reply_text(warns_text)
+    await update.message.reply_text(warns_text, parse_mode='HTML')
 
 async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -485,7 +491,8 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     warns = db.get_warns(chat_id, target_user.id)
 
     if not warns:
-        await update.message.reply_text(f"У пользователя {target_user.first_name} нет предупреждений")
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
         return
 
     db.remove_last_warn(chat_id, target_user.id)
@@ -494,9 +501,10 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if db.is_banned(chat_id, target_user.id) and warn_count < 3:
         db.remove_ban(chat_id, target_user.id)
 
+    user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
     await update.message.reply_text(
-        f"Предупреждение снято с пользователя {target_user.first_name}\n"
-        f"Осталось предупреждений: {warn_count}/3"
+        f"Предупреждение снято с {user_link}\nОсталось предупреждений: {warn_count}/3",
+        parse_mode='HTML'
     )
 
 async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -520,8 +528,10 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         await context.bot.ban_chat_member(chat_id, target_user.id)
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(
-            f"Пользователь {target_user.first_name} забанен\nПричина: {reason}"
+            f"{user_link} забанен\nПричина: {reason}",
+            parse_mode='HTML'
         )
     except Exception as e:
         await update.message.reply_text(f"Ошибка при бане: {str(e)}")
@@ -543,7 +553,8 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         await context.bot.unban_chat_member(chat_id, target_user.id)
-        await update.message.reply_text(f"Пользователь {target_user.first_name} разбанен")
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(f"{user_link} разбанен", parse_mode='HTML')
     except Exception as e:
         await update.message.reply_text(f"Ошибка при разбане: {str(e)}")
 
@@ -564,7 +575,8 @@ async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await context.bot.ban_chat_member(chat_id, target_user.id)
         await context.bot.unban_chat_member(chat_id, target_user.id)
-        await update.message.reply_text(f"Пользователь {target_user.first_name} исключен из чата")
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(f"{user_link} исключен из чата", parse_mode='HTML')
     except Exception as e:
         await update.message.reply_text(f"Ошибка при кике: {str(e)}")
 
@@ -618,8 +630,10 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             permissions=ChatPermissions(can_send_messages=False),
             until_date=unmute_time
         )
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(
-            f"Пользователь {target_user.first_name} замучен на {duration} {unit}"
+            f"{user_link} замучен на {duration} {unit}",
+            parse_mode='HTML'
         )
     except Exception as e:
         await update.message.reply_text(f"Ошибка при муте: {str(e)}")
@@ -650,7 +664,8 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 can_add_web_page_previews=True
             )
         )
-        await update.message.reply_text(f"Пользователь {target_user.first_name} размучен")
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(f"{user_link} размучен", parse_mode='HTML')
     except Exception as e:
         await update.message.reply_text(f"Ошибка при размуте: {str(e)}")
 
@@ -670,7 +685,8 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.add_ban(chat_id, user_id)
             try:
                 await context.bot.ban_chat_member(chat_id, user_id)
-                await update.message.reply_text(f"Пользователь {update.message.from_user.first_name} забанен за постинг ссылки")
+                user_link = f"<a href='tg://user?id={user_id}'>{update.message.from_user.first_name}</a>"
+                await update.message.reply_text(f"{user_link} забанен за постинг ссылки", parse_mode='HTML')
             except Exception as e:
                 logging.error(f"Ошибка при бане за ссылку: {str(e)}")
 
@@ -722,9 +738,11 @@ async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         target_user = await context.bot.get_chat_member(chat_id, target_user_id)
-        await update.message.reply_text(f"✨ {target_user.user.first_name} получил награду: {award_name}")
+        user_link = f"<a href='tg://user?id={target_user_id}'>{target_user.user.first_name}</a>"
+        await update.message.reply_text(f"✨ {user_link} получил награду: {award_name}", parse_mode='HTML')
     except:
-        await update.message.reply_text(f"✨ Пользователь получил награду: {award_name}")
+        user_link = f"<a href='tg://user?id={target_user_id}'>Пользователь</a>"
+        await update.message.reply_text(f"✨ {user_link} получил награду: {award_name}", parse_mode='HTML')
 
 async def remove_awards_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -745,7 +763,8 @@ async def remove_awards_command(update: Update, context: ContextTypes.DEFAULT_TY
     
     try:
         target_user = await context.bot.get_chat_member(chat_id, target_user_id)
-        await update.message.reply_text(f"❌ Все награды сняты с {target_user.user.first_name}")
+        user_link = f"<a href='tg://user?id={target_user_id}'>{target_user.user.first_name}</a>"
+        await update.message.reply_text(f"❌ Все награды сняты с {user_link}", parse_mode='HTML')
     except:
         await update.message.reply_text("❌ Все награды сняты")
 
