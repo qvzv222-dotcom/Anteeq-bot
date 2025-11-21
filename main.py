@@ -6,7 +6,7 @@ import string
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
@@ -17,6 +17,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+# Отключаем логирование httpx для предотвращения утечки токена
+logging.getLogger('httpx').setLevel(logging.WARNING)
 
 # Конфигурация
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -229,10 +232,8 @@ async def remove_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Только создатель может отменить завещание")
         return
 
-    # Возврат к исходной иерархии создателей
-    for creator_username in CREATORS:
-        # В реальной реализации нужно найти user_id по username
-        pass
+    # Сбрасываем создателя - следующий пользователь из CREATORS автоматически станет создателем
+    chat_data.creator = None
 
     await update.message.reply_text("Завещание отменено")
 
@@ -667,7 +668,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.restrict_chat_member(
             chat_id, 
             target_user.id,
-            permissions={'can_send_messages': False},
+            permissions=ChatPermissions(can_send_messages=False),
             until_date=unmute_time
         )
         await update.message.reply_text(
@@ -699,13 +700,13 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.restrict_chat_member(
             chat_id,
             target_user.id,
-            permissions={
-                'can_send_messages': True,
-                'can_send_media_messages': True,
-                'can_send_polls': True,
-                'can_send_other_messages': True,
-                'can_add_web_page_previews': True
-            }
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_send_polls=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True
+            )
         )
         await update.message.reply_text(f"Пользователь {target_user.first_name} размучен")
     except Exception as e:
