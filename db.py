@@ -447,17 +447,16 @@ def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
     conn = get_connection()
     cur = conn.cursor()
     cur.execute('''
-        SELECT DISTINCT a.user_id FROM admins a
+        SELECT a.user_id, a.rank FROM admins a
         WHERE a.chat_id = %s
         ORDER BY a.rank DESC, a.user_id
     ''', (chat_id,))
-    user_ids = [r[0] for r in cur.fetchall()]
+    results = cur.fetchall()
     cur.close()
     conn.close()
     
     users = []
-    for user_id in user_ids:
-        rank = get_user_rank(chat_id, user_id)
+    for user_id, rank in results:
         nick = get_user_nick(chat_id, user_id)
         awards = get_user_awards(chat_id, user_id)
         users.append({
