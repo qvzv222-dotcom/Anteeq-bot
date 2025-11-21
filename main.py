@@ -178,6 +178,11 @@ async def remove_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.set_chat_creator(chat_id, None)
     await update.message.reply_text("Завещание отменено. Статус создателя будет автоматически установлен для следующего пользователя из списка создателей.")
 
+async def show_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    welcome_text = db.get_welcome_message(chat_id)
+    await update.message.reply_text(welcome_text)
+
 async def set_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
@@ -959,6 +964,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!импорт'), import_settings))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!завещание'), set_will))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-завещание'), remove_will))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^приветствие$'), show_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто админ'), show_admins))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ранг'), set_rank))
