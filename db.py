@@ -26,13 +26,6 @@ def init_database():
         )
     ''')
     
-    try:
-        cur.execute('''
-            ALTER TABLE chats ADD COLUMN link_posting_rank INT DEFAULT 1
-        ''')
-    except:
-        pass
-    
     cur.execute('''
         CREATE TABLE IF NOT EXISTS admins (
             chat_id BIGINT,
@@ -102,11 +95,11 @@ def init_database():
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('ALTER TABLE chats ADD COLUMN link_posting_rank INT DEFAULT 1')
+        cur.execute('ALTER TABLE chats ADD COLUMN IF NOT EXISTS link_posting_rank INT DEFAULT 1')
         conn.commit()
         cur.close()
         conn.close()
-    except:
+    except Exception as e:
         pass
     
     print("База данных инициализирована")
