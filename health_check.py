@@ -8,12 +8,12 @@ logging.disable(logging.CRITICAL)
 
 app = Flask(__name__)
 
-@app.route('/health', methods=['GET'])
+@app.route('/health', methods=['GET', 'HEAD'])
 def health():
     """Health check endpoint for UptimeBot"""
     return jsonify({"status": "ok", "service": "telegram_bot"}), 200
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', 'HEAD'])
 def root():
     """Root endpoint for monitoring"""
     return jsonify({"status": "ok"}), 200
