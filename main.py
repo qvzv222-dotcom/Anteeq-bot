@@ -1175,7 +1175,7 @@ def main():
     setup_handlers(application)
     
     if application.job_queue is not None:
-        application.job_queue.run_repeating(check_expired_mutes, interval=10, first=5)
+        application.job_queue.run_repeating(check_expired_mutes, interval=300, first=5)
 
     print("Бот запущен...")
     print("Добавьте бота в группу и дайте ему права администратора!")
