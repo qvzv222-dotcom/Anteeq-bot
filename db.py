@@ -457,7 +457,7 @@ def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
     
     users = []
     for user_id, rank in results:
-        nick = get_user_nick(chat_id, user_id)
+        nick = get_nick(chat_id, user_id)
         awards = get_user_awards(chat_id, user_id)
         users.append({
             'user_id': user_id,
