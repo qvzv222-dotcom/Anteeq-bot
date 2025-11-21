@@ -21,7 +21,8 @@ def init_database():
             chat_code VARCHAR(10),
             welcome_message TEXT DEFAULT 'ANTEEQ',
             rules TEXT DEFAULT 'Правила чата не установлены',
-            access_control JSONB DEFAULT '{"1.1": 1, "1.2": 3, "1.3": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4}'::jsonb
+            access_control JSONB DEFAULT '{"1.1": 1, "1.2": 3, "1.3": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4}'::jsonb,
+            link_posting_rank INT DEFAULT 1
         )
     ''')
     
@@ -377,6 +378,24 @@ def find_chat_by_code(chat_code: str) -> Optional[int]:
     cur.close()
     conn.close()
     return result[0] if result else None
+
+def get_link_posting_rank(chat_id: int) -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT link_posting_rank FROM chats WHERE chat_id = %s', (chat_id,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    return result[0] if result else 1
+
+def set_link_posting_rank(chat_id: int, rank: int):
+    ensure_chat_exists(chat_id)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE chats SET link_posting_rank = %s WHERE chat_id = %s', (rank, chat_id))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def import_chat_settings(target_chat_id: int, source_chat_id: int):
     ensure_chat_exists(target_chat_id)

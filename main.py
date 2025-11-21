@@ -2,6 +2,7 @@ import os
 import logging
 import random
 import string
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -631,6 +632,26 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка при размуте: {str(e)}")
 
+async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+    
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    link_pattern = r'https?://|www\.'
+    if re.search(link_pattern, update.message.text):
+        required_rank = db.get_link_posting_rank(chat_id)
+        user_rank = get_user_rank(chat_id, user_id)
+        
+        if user_rank < required_rank:
+            db.add_ban(chat_id, user_id)
+            try:
+                await context.bot.ban_chat_member(chat_id, user_id)
+                await update.message.reply_text(f"Пользователь {update.message.from_user.first_name} забанен за постинг ссылки")
+            except Exception as e:
+                logging.error(f"Ошибка при бане за ссылку: {str(e)}")
+
 def get_section_from_command(command: str) -> str:
     command_lower = command.lower().strip()
     
@@ -650,6 +671,8 @@ def get_section_from_command(command: str) -> str:
         return "3.2"
     elif command_lower == "кто админ":
         return "3.1"
+    elif command_lower == "ссылки":
+        return "5"
     else:
         return None
 
@@ -675,6 +698,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             "3 - Правила, Приветствие\n"
             "   правила, +правила, +приветствие, кто админ\n\n"
             "4 - Доступ к команде ДК\n\n"
+            "5 - Постинг ссылок (дк ссылки [ранг])\n\n"
             "Ранги: 0-5\n"
             "0 - Участник\n"
             "1 - Модератор чата\n"
@@ -706,9 +730,12 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text(f"Неизвестная команда: {command_name}")
         return
 
-    access_control = db.get_access_control(chat_id)
-    access_control[section] = rank
-    db.set_access_control(chat_id, access_control)
+    if section == "5":
+        db.set_link_posting_rank(chat_id, rank)
+    else:
+        access_control = db.get_access_control(chat_id)
+        access_control[section] = rank
+        db.set_access_control(chat_id, access_control)
 
     section_names = {
         "1.1": "Мут и снятие мута",
@@ -718,7 +745,8 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         "2.2": "Ники другим",
         "3.1": "Правила",
         "3.2": "Приветствие",
-        "4": "Доступ к команде ДК"
+        "4": "Доступ к команде ДК",
+        "5": "Постинг ссылок"
     }
 
     rank_names = {
@@ -765,6 +793,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=-2)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_and_set_creator_rank), group=-1)
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
