@@ -1056,10 +1056,11 @@ def main():
     print("Инициализация базы данных...")
     db.init_database()
     
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).job_queue_class(None).build()
     setup_handlers(application)
     
-    application.job_queue.run_repeating(check_expired_mutes, interval=10, first=5)
+    if application.job_queue is not None:
+        application.job_queue.run_repeating(check_expired_mutes, interval=10, first=5)
 
     print("Бот запущен...")
     print("Добавьте бота в группу и дайте ему права администратора!")
