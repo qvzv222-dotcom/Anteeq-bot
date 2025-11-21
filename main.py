@@ -547,10 +547,17 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             admin_link = "Неизвестно"
 
-        date_str = warn['warn_date'].strftime("%d.%m.%Y %H:%M")
+        warn_date = warn['warn_date']
+        if isinstance(warn_date, str):
+            from datetime import datetime
+            warn_date = datetime.fromisoformat(warn_date.replace('Z', '+00:00'))
+        
+        date_str = warn_date.strftime("%d.%m.%Y %H:%M")
+        expires_date = (warn_date + timedelta(days=30)).strftime("%d.%m.%Y %H:%M")
         
         warns_text += f"""⚠️ <b>{user_link} предупреждения ({i}/{3})</b>
-📅 {date_str}
+📅 Выдано: {date_str}
+⏰ Истекает: {expires_date}
 📝 Причина: {warn['reason']}
 🛡️ Модератор: {admin_link}
 
