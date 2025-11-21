@@ -372,7 +372,8 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i, (user_id, nick) in enumerate(nicks.items(), 1):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
-            nicks_text += f"{i}. {user.user.first_name} - {nick}\n"
+            username = f"@{user.user.username}" if user.user.username else "без юзернейма"
+            nicks_text += f"{i}. {nick} - {username}\n"
         except:
             continue
 
