@@ -277,7 +277,7 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admins = db.get_all_admins(chat_id)
 
     if not admins:
-        await update.message.reply_text("В чате нет администраторов")
+        await update.message.reply_text("✅ В чате нет администраторов")
         return
 
     rank_names = {
@@ -289,17 +289,33 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
         5: "Глава альянса"
     }
 
-    admins_text = "Администраторы чата:\n"
+    rank_emoji = {
+        0: "👤",
+        1: "🛡️",
+        2: "📌",
+        3: "⚜️",
+        4: "👑",
+        5: "🏆"
+    }
+
+    admins_text = """
+⠀╔════════════════════════════════════╗
+║ㅤㅤㅤㅤ 👨‍💼 АДМИНИСТРАТОРЫ ЧАТА ㅤㅤㅤ⠀║
+⠀╚════════════════════════════════════╝
+
+"""
     for user_id, rank in sorted(admins.items(), key=lambda x: x[1], reverse=True):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
             rank_name = rank_names.get(rank, "Неизвестно")
+            emoji = rank_emoji.get(rank, "•")
             user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
-            admins_text += f"• {user_link} - {rank_name}\n"
+            admins_text += f"{emoji} <b>{rank_name}</b>\n→ {user_link}\n\n"
         except:
             continue
 
-    await update.message.reply_text(admins_text, parse_mode='HTML')
+    admins_text += f"📊 <i>Всего администраторов: {len(admins)}</i>"
+    await update.message.reply_text(admins_text.strip(), parse_mode='HTML')
 
 async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
