@@ -549,16 +549,12 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         date_str = warn['warn_date'].strftime("%d.%m.%Y %H:%M")
         
-        warns_text += f"""⚠️ <b>{user_link} получает предупреждение ({i}/{3})</b>
+        warns_text += f"""⚠️ <b>{user_link} предупреждения ({i}/{3})</b>
 📅 {date_str}
 📝 Причина: {warn['reason']}
 🛡️ Модератор: {admin_link}
 
 """
-
-    warns_text += f"""<b>Итого:</b> <b>{total_warns}/3</b> предупреждений"""
-    if total_warns >= 3:
-        warns_text += f" ❌ <b>БАН!</b>"
 
     await update.message.reply_text(warns_text.strip(), parse_mode='HTML')
 
