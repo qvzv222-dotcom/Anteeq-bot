@@ -488,7 +488,7 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "1.3"):
+    if not has_access(chat_id, user_id, "1.4"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -582,7 +582,7 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "1.3"):
+    if not has_access(chat_id, user_id, "1.4"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -619,7 +619,7 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "1.2"):
+    if not has_access(chat_id, user_id, "1.3"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -653,7 +653,7 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "1.2"):
+    if not has_access(chat_id, user_id, "1.3"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -680,7 +680,7 @@ async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "1.2"):
+    if not has_access(chat_id, user_id, "1.3"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -769,7 +769,7 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "1.1"):
+    if not has_access(chat_id, user_id, "1.2"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -955,12 +955,14 @@ async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_section_from_command(command: str) -> str:
     command_lower = command.lower().strip()
     
-    if command_lower in ["мут", "размут", "говори"]:
+    if command_lower == "мут":
         return "1.1"
-    elif command_lower in ["бан", "разбан", "кик"]:
+    elif command_lower in ["размут", "говори"]:
         return "1.2"
-    elif command_lower in ["варн", "пред", "снять пред"]:
+    elif command_lower in ["бан", "разбан", "кик"]:
         return "1.3"
+    elif command_lower in ["варн", "пред", "снять пред"]:
+        return "1.4"
     elif command_lower in ["+ник", "-ник"]:
         return "2.1"
     elif command_lower in ["+ник другому", "-ник другому"]:
@@ -997,8 +999,9 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         rank_emoji = {0: "0️⃣", 1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "4️⃣", 5: "5️⃣"}
         
         r_1_1 = access_control.get('1.1', 1)
-        r_1_2 = access_control.get('1.2', 3)
-        r_1_3 = access_control.get('1.3', 1)
+        r_1_2 = access_control.get('1.2', 1)
+        r_1_3 = access_control.get('1.3', 3)
+        r_1_4 = access_control.get('1.4', 1)
         r_2_1 = access_control.get('2.1', 0)
         r_2_2 = access_control.get('2.2', 2)
         r_3_1 = access_control.get('3.1', 3)
@@ -1008,9 +1011,10 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         help_text = (
             "⚙️ Изменить доступ к команде: <b>дк {команда} {требуемый ранг}</b>\n\n"
             "🔴 <b>РАЗДЕЛ 1: Система наказаний</b>\n"
-            f"1.1. ⏰ Мут и размут: <i>мут, размут, говори</i> {rank_emoji[r_1_1]}\n"
-            f"1.2. ⚠️ Предупреждения: <i>пред, варн, снять пред</i> {rank_emoji[r_1_3]}\n"
-            f"1.3. 🔨 Бан и кик: <i>бан, разбан, кик</i> {rank_emoji[r_1_2]}\n\n"
+            f"1.1. 🔇 Мут: <i>мут</i> {rank_emoji[r_1_1]}\n"
+            f"1.2. 🔊 Размут: <i>размут, говори</i> {rank_emoji[r_1_2]}\n"
+            f"1.3. 🔨 Бан и кик: <i>бан, разбан, кик</i> {rank_emoji[r_1_3]}\n"
+            f"1.4. ⚠️ Предупреждения: <i>пред, варн, снять пред</i> {rank_emoji[r_1_4]}\n\n"
             "🟡 <b>РАЗДЕЛ 2: Система ников</b>\n"
             f"2.1. ✏️ Установить себе ник: <i>+ник</i> {rank_emoji[r_2_1]}\n"
             f"2.2. 🗑️ Удалить себе ник: <i>-ник</i> {rank_emoji[r_2_1]}\n"
