@@ -298,12 +298,7 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
         5: "🏆"
     }
 
-    admins_text = """
-⠀╔════════════════════════════════════╗
-║ㅤㅤㅤㅤ 👨‍💼 АДМИНИСТРАТОРЫ ЧАТА ㅤㅤㅤ⠀║
-⠀╚════════════════════════════════════╝
-
-"""
+    admins_text = "👨‍💼 <b>АДМИНИСТРАТОРЫ ЧАТА</b>\n\n"
     for user_id, rank in sorted(admins.items(), key=lambda x: x[1], reverse=True):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
