@@ -85,8 +85,8 @@ async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAU
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("👤 Ники", callback_data="nicks_help"), InlineKeyboardButton("👑 Админы", callback_data="admins_help")],
-        [InlineKeyboardButton("⚠️ Преды", callback_data="warns_help"), InlineKeyboardButton("📋 Правила", callback_data="rules_help")]
+        [InlineKeyboardButton("👤 Ники", callback_data="nicks_help"), InlineKeyboardButton("⚠️ Преды", callback_data="warns_help")],
+        [InlineKeyboardButton("📋 Правила", callback_data="rules_help")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -1162,7 +1162,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!снять награды'), remove_awards_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^Наградной список$'), show_participants))
 
-    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|admins_help|warns_help|rules_help)"))
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
 
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
 
