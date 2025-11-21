@@ -585,7 +585,7 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '-варн' или '-пред'")
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'снять пред'")
         return
 
     target_user = update.message.reply_to_message.from_user
@@ -1145,7 +1145,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+правила'), set_rules))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^преды$'), show_warns))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-(варн|пред)'), remove_warn))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^снять пред'), remove_warn))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:варн|пред)(?:\s|$)'), warn_user))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^разбан'), unban_user))
