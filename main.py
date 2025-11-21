@@ -1084,9 +1084,9 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^правила$'), show_rules))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+правила'), set_rules))
     
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-(варн|пред)'), remove_warn))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(варн|пред)'), warn_user))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^преды$'), show_warns))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-(варн|пред)'), remove_warn))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:варн|пред)(?:\s|$)'), warn_user))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^разбан'), unban_user))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кик'), kick_user))
