@@ -729,8 +729,16 @@ async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
             current_rank = user['rank']
             message += f"\n📊 {rank_names.get(current_rank, 'Неизвестный ранг')}:\n"
         
-        nick_display = user['nick'] if user['nick'] else f"@{user['user_id']}"
-        message += f"  • {nick_display}"
+        try:
+            member = await context.bot.get_chat_member(chat_id, user['user_id'])
+            user_name = member.user.first_name
+            username = member.user.username
+            user_display = f"<a href='tg://user?id={user['user_id']}'>{user_name}</a>"
+        except Exception as e:
+            logging.error(f"Ошибка при получении информации о пользователе: {e}")
+            user_display = f"@{user['user_id']}"
+        
+        message += f"  • {user_display}"
         
         if user['awards']:
             awards_str = ", ".join(user['awards'])
@@ -741,7 +749,7 @@ async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message += "\n"
     
     if message:
-        await update.message.reply_text(message)
+        await update.message.reply_text(message, parse_mode='HTML')
     else:
         await update.message.reply_text("Нет участников")
 
