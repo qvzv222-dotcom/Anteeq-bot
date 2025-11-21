@@ -26,6 +26,13 @@ def init_database():
         )
     ''')
     
+    try:
+        cur.execute('''
+            ALTER TABLE chats ADD COLUMN link_posting_rank INT DEFAULT 1
+        ''')
+    except:
+        pass
+    
     cur.execute('''
         CREATE TABLE IF NOT EXISTS admins (
             chat_id BIGINT,
