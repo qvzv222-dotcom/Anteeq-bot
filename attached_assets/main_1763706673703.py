@@ -1,0 +1,868 @@
+import os
+import logging
+import json
+import random
+import string
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
+    ContextTypes, filters
+)
+
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# Конфигурация
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+if not BOT_TOKEN:
+    print("Ошибка: BOT_TOKEN не найден!")
+    print("Добавьте BOT_TOKEN в Secrets (Environment Variables)")
+    exit(1)
+
+CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
+
+# Структуры данных для хранения
+class ChatData:
+    def __init__(self):
+        self.creator: Optional[int] = None
+        self.chat_code: Optional[str] = None
+        self.welcome_message = "ANTEEQ"
+        self.rules = "Правила чата не установлены"
+        self.admins = {}  # user_id: rank
+        self.nicks = {}   # user_id: nick
+        self.warns = {}   # user_id: list of (from_user_id, reason, date)
+        self.mutes = {}   # user_id: unmute_time
+        self.bans = set() # user_id
+        self.access_control = {
+            "1.1": 1,  # Мут
+            "1.2": 3,  # Бан
+            "1.3": 1,  # Предупреждения
+            "2.1": 0,  # Ники себе
+            "2.2": 2,  # Ники другим
+            "3.1": 3,  # Правила
+            "3.2": 3,  # Приветствие
+            "4": 4     # Доступ к ДК
+        }
+
+# Глобальное хранилище данных
+chats_data: Dict[int, ChatData] = {}
+
+def get_chat_data(chat_id: int) -> ChatData:
+    if chat_id not in chats_data:
+        chats_data[chat_id] = ChatData()
+    return chats_data[chat_id]
+
+def generate_chat_code() -> str:
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+
+def is_creator_username(username: Optional[str]) -> bool:
+    """Проверяет, является ли username одним из создателей"""
+    if not username:
+        return False
+    return username in CREATORS
+
+def get_user_rank(chat_id: int, user_id: int) -> int:
+    chat_data = get_chat_data(chat_id)
+    return chat_data.admins.get(user_id, 0)
+
+def has_access(chat_id: int, user_id: int, section: str) -> bool:
+    chat_data = get_chat_data(chat_id)
+    required_rank = chat_data.access_control.get(section, 5)
+    user_rank = get_user_rank(chat_id, user_id)
+
+    # Создатель имеет полный доступ
+    if chat_data.creator == user_id:
+        return True
+
+    return user_rank >= required_rank
+
+async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Проверяет и устанавливает ранг 5 для создателей из списка CREATORS"""
+    if not update.message or not update.message.from_user:
+        return
+    
+    user = update.message.from_user
+    chat_id = update.message.chat_id
+    
+    # Проверяем username
+    if is_creator_username(user.username):
+        chat_data = get_chat_data(chat_id)
+        # Устанавливаем ранг 5, если его еще нет
+        if chat_data.admins.get(user.id, 0) < 5:
+            chat_data.admins[user.id] = 5
+            # Устанавливаем как создателя, если создатель не установлен
+            if not chat_data.creator:
+                chat_data.creator = user.id
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Ники", callback_data="nicks_help")],
+        [InlineKeyboardButton("Админы", callback_data="admins_help")],
+        [InlineKeyboardButton("Преды", callback_data="warns_help")],
+        [InlineKeyboardButton("Правила", callback_data="rules_help")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "Доступные команды:\n\n"
+        "• Помощь - показать это сообщение\n"
+        "• Кто админ - список администраторов\n"
+        "• +ник [ник] - установить свой ник\n"
+        "• -ник - удалить свой ник\n"
+        "• Ники - список всех ников\n"
+        "• Преды - посмотреть свои предупреждения\n"
+        "• Правила - показать правила чата",
+        reply_markup=reply_markup
+    )
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    chat_id = query.message.chat_id
+
+    if data == "nicks_help":
+        text = "Команды ников:\n• +ник [ник] - установить ник\n• -ник - удалить ник\n• Ники - список ников"
+    elif data == "admins_help":
+        text = "Команда: 'кто админ' - покажет список администраторов чата"
+    elif data == "warns_help":
+        text = "Команда: 'преды' - покажет ваши предупреждения\nДля других участников - ответьте на сообщение с этой командой"
+    elif data == "rules_help":
+        text = "Команда: 'правила' - покажет правила чата"
+    else:
+        return
+
+    await query.edit_message_text(text)
+
+async def chat_code_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    chat_data = get_chat_data(chat_id)
+
+    if not has_access(chat_id, user_id, "4"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not chat_data.chat_code:
+        chat_data.chat_code = generate_chat_code()
+
+    await update.message.reply_text(f"Код чата: {chat_data.chat_code}")
+
+async def import_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "4"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    if len(parts) < 2:
+        await update.message.reply_text("Использование: !импорт [код]")
+        return
+
+    source_code = parts[1].upper()
+    source_chat_id = None
+
+    # Поиск чата с таким кодом
+    for cid, data in chats_data.items():
+        if data.chat_code == source_code:
+            source_chat_id = cid
+            break
+
+    if not source_chat_id:
+        await update.message.reply_text("Чат с таким кодом не найден")
+        return
+
+    source_data = chats_data[source_chat_id]
+    target_data = get_chat_data(chat_id)
+
+    # Импорт настроек (кроме наказаний, ников и рангов)
+    target_data.welcome_message = source_data.welcome_message
+    target_data.rules = source_data.rules
+    target_data.access_control = source_data.access_control.copy()
+
+    await update.message.reply_text("Настройки успешно импортированы")
+
+async def set_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    chat_data = get_chat_data(chat_id)
+
+    if chat_data.creator != user_id:
+        await update.message.reply_text("Только создатель может оставить завещание")
+        return
+
+    target_user = None
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        text = update.message.text.strip()
+        parts = text.split()
+        if len(parts) > 1:
+            username = parts[1].replace('@', '')
+            # Здесь нужно получить user_id по username
+            # В реальной реализации нужно использовать методы Telegram API
+
+    if not target_user:
+        await update.message.reply_text("Укажите пользователя через ответ на сообщение или @username")
+        return
+
+    chat_data.creator = target_user.id
+    await update.message.reply_text(f"Статус создателя передан пользователю {target_user.first_name}")
+
+async def remove_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    chat_data = get_chat_data(chat_id)
+
+    if chat_data.creator != user_id:
+        await update.message.reply_text("Только создатель может отменить завещание")
+        return
+
+    # Возврат к исходной иерархии создателей
+    for creator_username in CREATORS:
+        # В реальной реализации нужно найти user_id по username
+        pass
+
+    await update.message.reply_text("Завещание отменено")
+
+async def set_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "3.2"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    if len(parts) < 2:
+        await update.message.reply_text("Использование: +приветствие [текст]")
+        return
+
+    welcome_text = parts[1]
+    chat_data = get_chat_data(chat_id)
+    chat_data.welcome_message = welcome_text
+
+    await update.message.reply_text("Приветственное сообщение обновлено")
+
+async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    chat_data = get_chat_data(chat_id)
+
+    if not chat_data.admins:
+        await update.message.reply_text("В чате нет администраторов")
+        return
+
+    rank_names = {
+        0: "Участник",
+        1: "Модератор чата", 
+        2: "Наборщик",
+        3: "Заместитель главы клана",
+        4: "Глава клана",
+        5: "Глава альянса"
+    }
+
+    admins_text = "Администраторы чата:\n"
+    for user_id, rank in sorted(chat_data.admins.items(), key=lambda x: x[1], reverse=True):
+        try:
+            user = await context.bot.get_chat_member(chat_id, user_id)
+            rank_name = rank_names.get(rank, "Неизвестно")
+            admins_text += f"• {user.user.first_name} - {rank_name}\n"
+        except:
+            continue
+
+    await update.message.reply_text(admins_text)
+
+async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Назначить ранг пользователю"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    chat_data = get_chat_data(chat_id)
+
+    # Только создатель может назначать ранги
+    if chat_data.creator != user_id:
+        await update.message.reply_text("Только создатель может назначать ранги")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '+ранг [ранг]'")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    if len(parts) < 2:
+        await update.message.reply_text(
+            "Использование: +ранг [ранг]\n\n"
+            "Ранги:\n"
+            "0 - Участник\n"
+            "1 - Модератор чата\n"
+            "2 - Наборщик\n"
+            "3 - Заместитель главы клана\n"
+            "4 - Глава клана\n"
+            "5 - Глава альянса"
+        )
+        return
+
+    try:
+        rank = int(parts[1])
+        if rank < 0 or rank > 5:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("Ранг должен быть числом от 0 до 5")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    
+    rank_names = {
+        0: "Участник",
+        1: "Модератор чата",
+        2: "Наборщик",
+        3: "Заместитель главы клана",
+        4: "Глава клана",
+        5: "Глава альянса"
+    }
+
+    if rank == 0:
+        # Удаляем из списка админов
+        if target_user.id in chat_data.admins:
+            del chat_data.admins[target_user.id]
+        await update.message.reply_text(f"Пользователь {target_user.first_name} теперь обычный участник")
+    else:
+        chat_data.admins[target_user.id] = rank
+        await update.message.reply_text(
+            f"Пользователю {target_user.first_name} назначен ранг: {rank_names[rank]}"
+        )
+
+async def set_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "2.1"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    if len(parts) < 2:
+        await update.message.reply_text("Использование: +ник [никнейм]")
+        return
+
+    nick = parts[1]
+    chat_data = get_chat_data(chat_id)
+    chat_data.nicks[user_id] = nick
+
+    await update.message.reply_text(f"Ваш ник установлен: {nick}")
+
+async def remove_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    chat_data = get_chat_data(chat_id)
+
+    if not has_access(chat_id, user_id, "2.1"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if user_id in chat_data.nicks:
+        del chat_data.nicks[user_id]
+        await update.message.reply_text("Ваш ник удален")
+    else:
+        await update.message.reply_text("У вас нет установленного ника")
+
+async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Установить ник другому пользователю"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "2.2"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '+ник другому [никнейм]'")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=2)
+    
+    if len(parts) < 3:
+        await update.message.reply_text("Использование: +ник другому [никнейм]")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    nick = parts[2]
+    chat_data = get_chat_data(chat_id)
+    chat_data.nicks[target_user.id] = nick
+
+    await update.message.reply_text(f"Ник для пользователя {target_user.first_name} установлен: {nick}")
+
+async def remove_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Удалить ник другому пользователю"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "2.2"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '-ник другому'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    chat_data = get_chat_data(chat_id)
+
+    if target_user.id in chat_data.nicks:
+        del chat_data.nicks[target_user.id]
+        await update.message.reply_text(f"Ник пользователя {target_user.first_name} удален")
+    else:
+        await update.message.reply_text(f"У пользователя {target_user.first_name} нет установленного ника")
+
+async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    chat_data = get_chat_data(chat_id)
+
+    if not chat_data.nicks:
+        await update.message.reply_text("В чате нет установленных ников")
+        return
+
+    nicks_text = "Ники участников:\n"
+    for i, (user_id, nick) in enumerate(chat_data.nicks.items(), 1):
+        try:
+            user = await context.bot.get_chat_member(chat_id, user_id)
+            nicks_text += f"{i}. {user.user.first_name} - {nick}\n"
+        except:
+            continue
+
+    await update.message.reply_text(nicks_text)
+
+async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    chat_data = get_chat_data(chat_id)
+    await update.message.reply_text(chat_data.rules)
+
+async def set_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "3.1"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    if len(parts) < 2:
+        await update.message.reply_text("Использование: +правила [текст правил]")
+        return
+
+    rules_text = parts[1]
+    chat_data = get_chat_data(chat_id)
+    chat_data.rules = rules_text
+
+    await update.message.reply_text("Правила чата обновлены")
+
+async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.3"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    target_user = None
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    reason = parts[1] if len(parts) > 1 else "Причина не указана"
+
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+
+    if not target_user:
+        await update.message.reply_text("Использование: ответом на сообщение 'варн [причина]'")
+        return
+
+    chat_data = get_chat_data(chat_id)
+
+    if target_user.id not in chat_data.warns:
+        chat_data.warns[target_user.id] = []
+
+    warn_data = {
+        'from_user_id': user_id,
+        'reason': reason,
+        'date': datetime.now()
+    }
+    chat_data.warns[target_user.id].append(warn_data)
+
+    warn_count = len(chat_data.warns[target_user.id])
+
+    if warn_count >= 3:
+        # Автоматический бан при 3 предупреждениях
+        chat_data.bans.add(target_user.id)
+        await update.message.reply_text(
+            f"Пользователь {target_user.first_name} получил 3 предупреждения и был забанен"
+        )
+    else:
+        await update.message.reply_text(
+            f"Пользователь {target_user.first_name} получил предупреждение ({warn_count}/3)\nПричина: {reason}"
+        )
+
+async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    chat_data = get_chat_data(chat_id)
+
+    target_user = update.message.from_user
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+
+    if target_user.id not in chat_data.warns or not chat_data.warns[target_user.id]:
+        await update.message.reply_text(f"У пользователя {target_user.first_name} нет предупреждений")
+        return
+
+    warns = chat_data.warns[target_user.id]
+    warns_text = f"Предупреждения пользователя {target_user.first_name} ({len(warns)}/3):\n"
+
+    for i, warn in enumerate(warns, 1):
+        try:
+            admin = await context.bot.get_chat_member(chat_id, warn['from_user_id'])
+            admin_name = admin.user.first_name
+        except:
+            admin_name = "Неизвестно"
+
+        date_str = warn['date'].strftime("%d.%m.%Y %H:%M")
+        warns_text += f"{i}. {date_str} - {admin_name}: {warn['reason']}\n"
+
+    await update.message.reply_text(warns_text)
+
+async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Снять предупреждение"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.3"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '-варн' или '-пред'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    chat_data = get_chat_data(chat_id)
+
+    if target_user.id not in chat_data.warns or not chat_data.warns[target_user.id]:
+        await update.message.reply_text(f"У пользователя {target_user.first_name} нет предупреждений")
+        return
+
+    # Удаляем последнее предупреждение
+    removed_warn = chat_data.warns[target_user.id].pop()
+    warn_count = len(chat_data.warns[target_user.id])
+    
+    # Если предупреждений больше нет, удаляем из бана
+    if target_user.id in chat_data.bans and warn_count < 3:
+        chat_data.bans.remove(target_user.id)
+
+    await update.message.reply_text(
+        f"Предупреждение снято с пользователя {target_user.first_name}\n"
+        f"Осталось предупреждений: {warn_count}/3"
+    )
+
+async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Забанить пользователя"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.2"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'бан [причина]'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    reason = parts[1] if len(parts) > 1 else "Причина не указана"
+
+    chat_data = get_chat_data(chat_id)
+    chat_data.bans.add(target_user.id)
+
+    try:
+        await context.bot.ban_chat_member(chat_id, target_user.id)
+        await update.message.reply_text(
+            f"Пользователь {target_user.first_name} забанен\nПричина: {reason}"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при бане: {str(e)}")
+
+async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Разбанить пользователя"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.2"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'разбан'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    chat_data = get_chat_data(chat_id)
+
+    if target_user.id in chat_data.bans:
+        chat_data.bans.remove(target_user.id)
+
+    try:
+        await context.bot.unban_chat_member(chat_id, target_user.id)
+        await update.message.reply_text(f"Пользователь {target_user.first_name} разбанен")
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при разбане: {str(e)}")
+
+async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Замутить пользователя"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.1"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'мут [время в минутах]'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    # По умолчанию 60 минут
+    duration = 60
+    if len(parts) > 1:
+        try:
+            duration = int(parts[1])
+        except ValueError:
+            duration = 60
+
+    chat_data = get_chat_data(chat_id)
+    unmute_time = datetime.now() + timedelta(minutes=duration)
+    chat_data.mutes[target_user.id] = unmute_time
+
+    try:
+        await context.bot.restrict_chat_member(
+            chat_id, 
+            target_user.id,
+            permissions={'can_send_messages': False},
+            until_date=unmute_time
+        )
+        await update.message.reply_text(
+            f"Пользователь {target_user.first_name} замучен на {duration} минут"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при муте: {str(e)}")
+
+async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Размутить пользователя"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.1"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'размут'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    chat_data = get_chat_data(chat_id)
+
+    if target_user.id in chat_data.mutes:
+        del chat_data.mutes[target_user.id]
+
+    try:
+        await context.bot.restrict_chat_member(
+            chat_id,
+            target_user.id,
+            permissions={
+                'can_send_messages': True,
+                'can_send_media_messages': True,
+                'can_send_polls': True,
+                'can_send_other_messages': True,
+                'can_add_web_page_previews': True
+            }
+        )
+        await update.message.reply_text(f"Пользователь {target_user.first_name} размучен")
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при размуте: {str(e)}")
+
+async def access_control_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "4"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    if len(parts) < 3:
+        await update.message.reply_text(
+            "Использование: дк [раздел] [ранг]\n\n"
+            "Разделы:\n"
+            "1.1 - Мут и снятие мута\n"
+            "1.2 - Бан и снятие бана\n" 
+            "1.3 - Предупреждения\n"
+            "2.1 - Ники себе\n"
+            "2.2 - Ники другим\n"
+            "3.1 - Правила\n"
+            "3.2 - Приветствие\n"
+            "4 - Доступ к команде ДК\n\n"
+            "Ранги: 0-5 (0 - участник, 5 - глава альянса)"
+        )
+        return
+
+    section = parts[1]
+    try:
+        rank = int(parts[2])
+        if rank < 0 or rank > 5:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("Ранг должен быть числом от 0 до 5")
+        return
+
+    chat_data = get_chat_data(chat_id)
+
+    if section not in chat_data.access_control:
+        await update.message.reply_text("Неверный раздел")
+        return
+
+    chat_data.access_control[section] = rank
+
+    section_names = {
+        "1.1": "Мут и снятие мута",
+        "1.2": "Бан и снятие бана", 
+        "1.3": "Предупреждения",
+        "2.1": "Ники себе",
+        "2.2": "Ники другим",
+        "3.1": "Правила",
+        "3.2": "Приветствие",
+        "4": "Доступ к команде ДК"
+    }
+
+    rank_names = {
+        0: "Участник",
+        1: "Модератор чата",
+        2: "Наборщик", 
+        3: "Заместитель главы клана",
+        4: "Глава клана",
+        5: "Глава альянса"
+    }
+
+    await update.message.reply_text(
+        f"Для раздела '{section_names[section]}' теперь требуется ранг: {rank_names[rank]}"
+    )
+
+async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    chat_data = get_chat_data(chat_id)
+
+    # Проверяем добавившего пользователя на ранг создателя
+    await check_and_set_creator_rank(update, context)
+
+    # Установка создателя при первом добавлении бота
+    if not chat_data.creator:
+        if is_creator_username(update.message.from_user.username):
+            chat_data.creator = update.message.from_user.id
+            chat_data.admins[update.message.from_user.id] = 5
+        else:
+            chat_data.creator = update.message.from_user.id
+
+    for user in update.message.new_chat_members:
+        if user.is_bot:
+            continue
+
+        # Проверяем нового участника на ранг создателя
+        if is_creator_username(user.username):
+            chat_data.admins[user.id] = 5
+
+        welcome_text = chat_data.welcome_message
+        if user.id in chat_data.nicks:
+            welcome_text += f"\nТвой ник: {chat_data.nicks[user.id]}"
+
+        await update.message.reply_text(welcome_text)
+
+def setup_handlers(application):
+    # Проверка ранга создателя для всех сообщений (выполняется первым)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_and_set_creator_rank), group=-1)
+    
+    # Основные команды
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!код чата$'), chat_code_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!импорт'), import_settings))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!завещание'), set_will))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-завещание'), remove_will))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто админ'), show_admins))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ранг'), set_rank))
+    
+    # Управление никами (специфичные команды должны быть первыми)
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник другому\s+'), set_nick_other))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-ник другому$'), remove_nick_other))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник\s+'), set_nick))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-ник$'), remove_nick))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^ники$'), show_nicks))
+    
+    # Правила
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^правила$'), show_rules))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+правила'), set_rules))
+    
+    # Предупреждения
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-(варн|пред)'), remove_warn))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(варн|пред)'), warn_user))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^преды$'), show_warns))
+    
+    # Бан/разбан
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^разбан'), unban_user))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бан'), ban_user))
+    
+    # Мут/размут
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^размут'), unmute_user))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^мут'), mute_user))
+    
+    # Доступ к командам
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^дк'), access_control_command))
+
+    # Обработчики кнопок
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|admins_help|warns_help|rules_help)"))
+
+    # Приветствие новых участников
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+
+def main():
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    setup_handlers(application)
+
+    print("Бот запущен...")
+    print("Добавьте бота в группу и дайте ему права администратора!")
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
