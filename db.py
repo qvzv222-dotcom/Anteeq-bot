@@ -443,6 +443,17 @@ def get_user_awards(chat_id: int, user_id: int) -> List[str]:
     conn.close()
     return [r[0] for r in results]
 
+def remove_all_awards(chat_id: int, user_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        DELETE FROM awards
+        WHERE chat_id = %s AND user_id = %s
+    ''', (chat_id, user_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
 def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
     conn = get_connection()
     cur = conn.cursor()

@@ -701,6 +701,29 @@ async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         await update.message.reply_text(f"✨ Пользователь получил награду: {award_name}")
 
+async def remove_awards_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Ответьте на сообщение пользователя, чтобы снять награды")
+        return
+    
+    target_user_id = update.message.reply_to_message.from_user.id
+    
+    if target_user_id != user_id:
+        if not has_access(chat_id, user_id, "3"):
+            await update.message.reply_text("Недостаточно прав для снятия наград других пользователей")
+            return
+    
+    db.remove_all_awards(chat_id, target_user_id)
+    
+    try:
+        target_user = await context.bot.get_chat_member(chat_id, target_user_id)
+        await update.message.reply_text(f"❌ Все награды сняты с {target_user.user.first_name}")
+    except:
+        await update.message.reply_text("❌ Все награды сняты")
+
 async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     
@@ -931,7 +954,8 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^дк'), access_control_command))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!наградить'), reward_command))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^участники$'), show_participants))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!снять награды'), remove_awards_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^Наградной список$'), show_participants))
 
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|admins_help|warns_help|rules_help)"))
 
