@@ -1056,7 +1056,7 @@ def main():
     print("Инициализация базы данных...")
     db.init_database()
     
-    application = Application.builder().token(BOT_TOKEN).job_queue_class(None).build()
+    application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
     if application.job_queue is not None:
