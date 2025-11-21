@@ -450,8 +450,7 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
             user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
-            username = f"@{user.user.username}" if user.user.username else "без юзернейма"
-            nicks_text += f"{i}️⃣ <b>{nick}</b> — {user_link} ({username})\n"
+            nicks_text += f"{i}️⃣ <b>{nick}</b> — {user_link}\n"
         except:
             continue
 
