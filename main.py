@@ -11,6 +11,8 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
+from flask import Flask, jsonify
+import threading
 
 import db
 
@@ -1220,14 +1222,32 @@ def setup_handlers(application):
 
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
 
+def run_health_check_server():
+    """Запускает HTTP сервер для мониторинга UptimeBot"""
+    app = Flask(__name__)
+    
+    @app.route('/health', methods=['GET'])
+    def health():
+        return jsonify({"status": "ok", "bot": "running"}), 200
+    
+    @app.route('/', methods=['GET'])
+    def root():
+        return jsonify({"status": "ok"}), 200
+    
+    app.run(host='0.0.0.0', port=8000, debug=False)
+
 def main():
     print("Инициализация базы данных...")
     db.init_database()
     
+    # Запуск сервера здоровья в отдельном потоке
+    health_thread = threading.Thread(target=run_health_check_server, daemon=True)
+    health_thread.start()
+    print("✅ Сервер мониторинга запущен на http://0.0.0.0:8000/health")
+    
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
-
     print("Бот запущен...")
     print("Добавьте бота в группу и дайте ему права администратора!")
     application.run_polling()
