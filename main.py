@@ -500,6 +500,10 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Использование: ответом на сообщение 'варн [причина]'")
         return
 
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете давать предупреждения себе", parse_mode='HTML')
+        return
+
     db.add_warn(chat_id, target_user.id, user_id, reason)
     warn_count = db.get_warn_count(chat_id, target_user.id)
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
@@ -578,6 +582,11 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете снимать предупреждения у себя", parse_mode='HTML')
+        return
+
     warns = db.get_warns(chat_id, target_user.id)
 
     if not warns:
@@ -610,6 +619,11 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете банить себя", parse_mode='HTML')
+        return
+
     text = update.message.text.strip()
     parts = text.split(maxsplit=1)
     reason = parts[1] if len(parts) > 1 else "Причина не указана"
@@ -639,6 +653,11 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете разбанить себя", parse_mode='HTML')
+        return
+
     db.remove_ban(chat_id, target_user.id)
 
     try:
@@ -662,6 +681,10 @@ async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target_user = update.message.reply_to_message.from_user
 
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете кикать себя", parse_mode='HTML')
+        return
+
     try:
         await context.bot.ban_chat_member(chat_id, target_user.id)
         await context.bot.unban_chat_member(chat_id, target_user.id)
@@ -683,6 +706,11 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете мутить себя", parse_mode='HTML')
+        return
+
     text = update.message.text.strip()
     parts = text.split()
     
@@ -741,6 +769,11 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете размучивать себя", parse_mode='HTML')
+        return
+
     db.remove_mute(chat_id, target_user.id)
 
     try:
