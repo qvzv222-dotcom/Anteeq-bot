@@ -22,7 +22,8 @@ def init_database():
             welcome_message TEXT DEFAULT 'ANTEEQ',
             rules TEXT DEFAULT 'Правила чата не установлены',
             access_control JSONB DEFAULT '{"1.1": 1, "1.2": 3, "1.3": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4}'::jsonb,
-            link_posting_rank INT DEFAULT 1
+            link_posting_rank INT DEFAULT 1,
+            award_giving_rank INT DEFAULT 3
         )
     ''')
     
@@ -96,6 +97,16 @@ def init_database():
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('ALTER TABLE chats ADD COLUMN IF NOT EXISTS link_posting_rank INT DEFAULT 1')
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        pass
+    
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('ALTER TABLE chats ADD COLUMN IF NOT EXISTS award_giving_rank INT DEFAULT 3')
         conn.commit()
         cur.close()
         conn.close()
@@ -415,6 +426,24 @@ def set_link_posting_rank(chat_id: int, rank: int):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute('UPDATE chats SET link_posting_rank = %s WHERE chat_id = %s', (rank, chat_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def get_award_giving_rank(chat_id: int) -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT award_giving_rank FROM chats WHERE chat_id = %s', (chat_id,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    return result[0] if result else 3
+
+def set_award_giving_rank(chat_id: int, rank: int):
+    ensure_chat_exists(chat_id)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE chats SET award_giving_rank = %s WHERE chat_id = %s', (rank, chat_id))
     conn.commit()
     cur.close()
     conn.close()

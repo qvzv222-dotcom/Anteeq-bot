@@ -656,7 +656,10 @@ async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     
-    if not has_access(chat_id, user_id, "3"):
+    required_rank = db.get_award_giving_rank(chat_id)
+    user_rank = get_user_rank(chat_id, user_id)
+    
+    if user_rank < required_rank:
         await update.message.reply_text("Недостаточно прав для выдачи наград")
         return
     
@@ -797,6 +800,8 @@ def get_section_from_command(command: str) -> str:
         return "3.1"
     elif command_lower == "ссылки":
         return "5"
+    elif command_lower == "награды":
+        return "6"
     else:
         return None
 
@@ -823,6 +828,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             "   правила, +правила, +приветствие, кто админ\n\n"
             "4 - Доступ к команде ДК\n\n"
             "5 - Постинг ссылок (дк ссылки [ранг])\n\n"
+            "6 - Выдача наград (дк награды [ранг])\n\n"
             "Ранги: 0-5\n"
             "0 - Участник\n"
             "1 - Модератор чата\n"
@@ -856,6 +862,8 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
 
     if section == "5":
         db.set_link_posting_rank(chat_id, rank)
+    elif section == "6":
+        db.set_award_giving_rank(chat_id, rank)
     else:
         access_control = db.get_access_control(chat_id)
         access_control[section] = rank
@@ -870,7 +878,8 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         "3.1": "Правила",
         "3.2": "Приветствие",
         "4": "Доступ к команде ДК",
-        "5": "Постинг ссылок"
+        "5": "Постинг ссылок",
+        "6": "Выдача наград"
     }
 
     rank_names = {
