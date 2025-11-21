@@ -556,8 +556,12 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from datetime import datetime
             warn_date = datetime.fromisoformat(warn_date.replace('Z', '+00:00'))
         
-        date_str = warn_date.strftime("%d.%m.%Y %H:%M")
-        expires_date = (warn_date + timedelta(days=7)).strftime("%d.%m.%Y %H:%M")
+        msk_offset = timedelta(hours=3)
+        warn_date_msk = warn_date + msk_offset
+        expires_date_msk = warn_date_msk + timedelta(days=7)
+        
+        date_str = warn_date_msk.strftime("%d.%m.%Y %H:%M")
+        expires_date = expires_date_msk.strftime("%d.%m.%Y %H:%M")
         
         warns_text += f"""⚠️ <b>{user_link} предупреждения ({i}/{3})</b>
 📅 Выдано: {date_str}
@@ -567,6 +571,7 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 """
 
+    warns_text += "\n🕐 <i>Время указано по МСК (UTC+3)</i>"
     await update.message.reply_text(warns_text.strip(), parse_mode='HTML')
 
 async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
