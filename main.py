@@ -541,6 +541,27 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка при разбане: {str(e)}")
 
+async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.2"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'кик'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+
+    try:
+        await context.bot.ban_chat_member(chat_id, target_user.id)
+        await context.bot.unban_chat_member(chat_id, target_user.id)
+        await update.message.reply_text(f"Пользователь {target_user.first_name} исключен из чата")
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при кике: {str(e)}")
+
 async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
@@ -771,6 +792,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^преды$'), show_warns))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^разбан'), unban_user))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кик'), kick_user))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бан'), ban_user))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(размут|говори)'), unmute_user))
