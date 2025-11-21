@@ -533,11 +533,9 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
     total_warns = len(warns)
     
-    header_text = "📋 ИСТОРИЯ ПРЕДУПРЕЖДЕНИЙ"
-    centered_header = header_text.center(34)
     warns_text = f"""
 ╔════════════════════════════════════╗
-║{centered_header}║
+║  📋 ИСТОРИЯ ПРЕДУПРЕЖДЕНИЙ      ║
 ╚════════════════════════════════════╝
 
 """
