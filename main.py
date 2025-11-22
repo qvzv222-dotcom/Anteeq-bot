@@ -32,7 +32,7 @@ if not BOT_TOKEN:
     exit(1)
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
-MEARLOCK_USER_ID = None
+TEST_USER_ID = 1376105197
 
 def generate_chat_code() -> str:
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
@@ -1044,45 +1044,20 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
-async def send_dm_to_mearlock(context: ContextTypes.DEFAULT_TYPE):
-    global MEARLOCK_USER_ID
-    if not MEARLOCK_USER_ID:
-        return
-    
-    messages = [
-        "🤖 Бот активен и работает!",
-        "⏰ Проверка каждые 5 минут",
-        "✅ Система наказаний работает",
-        "📊 Статистика обновлена",
-        "🔥 Бот на связи!",
-        "💫 Всё работает нормально",
-        "🎯 Система рангов активна",
-        "🚀 Боту хватает ресурсов"
-    ]
-    
-    message = random.choice(messages)
+async def send_test_dm(context: ContextTypes.DEFAULT_TYPE):
     try:
-        await context.bot.send_message(MEARLOCK_USER_ID, f"📬 {message}")
+        await context.bot.send_message(TEST_USER_ID, "тест")
     except Exception as e:
-        print(f"Ошибка отправки ДМ mearlock: {str(e)}")
+        print(f"Ошибка отправки ДМ: {str(e)}")
 
-def schedule_mearlock_dm(context: ContextTypes.DEFAULT_TYPE):
-    global MEARLOCK_USER_ID
-    if not MEARLOCK_USER_ID:
-        return
-    
-    job_removed = False
-    for job in context.job_queue.get_jobs_by_name("mearlock_dm"):
-        job.schedule_removal()
-        job_removed = True
-    
+def schedule_test_dm(context: ContextTypes.DEFAULT_TYPE):
     context.job_queue.run_repeating(
-        send_dm_to_mearlock,
+        send_test_dm,
         interval=300,
         first=5,
-        name="mearlock_dm"
+        name="test_dm"
     )
-    print(f"✅ Запланирована отправка ДМ mearlock каждые 5 минут (User ID: {MEARLOCK_USER_ID})")
+    print(f"✅ Запланирована отправка ДМ каждые 5 минут (User ID: {TEST_USER_ID})")
 
 async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -1109,13 +1084,6 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if is_creator_username(user.username):
             db.set_user_rank(chat_id, user.id, 5)
-        
-        # Проверяем если это mearlock
-        if user.username and user.username.lower() == 'mearlock':
-            global MEARLOCK_USER_ID
-            MEARLOCK_USER_ID = user.id
-            schedule_mearlock_dm(context)
-            print(f"✅ Обнаружен @mearlock (ID: {user.id}), начинаем отправку ДМ")
 
         welcome_text = db.get_welcome_message(chat_id)
         chat_title = update.message.chat.title or "Чат"
@@ -1401,6 +1369,9 @@ def main():
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Запуск задачи отправки ДМ
+    schedule_test_dm(application.context)
     
     print("✅ Бот полностью инициализирован!")
     print("✅ Keep-alive сервер работает - проект останется активным!")
