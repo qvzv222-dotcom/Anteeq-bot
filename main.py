@@ -89,8 +89,15 @@ async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAU
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == 'private':
+        try:
+            bot_info = await context.bot.get_me()
+            bot_username = bot_info.username
+            add_bot_url = f"https://t.me/{bot_username}?startgroup=true"
+        except:
+            add_bot_url = "https://t.me/?startgroup=true"
+        
         keyboard = [
-            [InlineKeyboardButton("➕ Добавить бота в группу", url="https://t.me/anteeq_admin_bot?startgroup=true")]
+            [InlineKeyboardButton("➕ Добавить бота в группу", url=add_bot_url)]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
