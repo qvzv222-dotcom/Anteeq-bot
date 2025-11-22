@@ -686,6 +686,11 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+
+    if user_rank < target_rank:
+        await update.message.reply_text("❌ Вы не можете снять предупреждение у пользователя с более высоким рангом")
+        return
 
     warns = db.get_warns(chat_id, target_user.id)
 
@@ -729,6 +734,11 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+
+    if user_rank < target_rank:
+        await update.message.reply_text("❌ Вы не можете снять предупреждения у пользователя с более высоким рангом")
+        return
 
     warns = db.get_warns(chat_id, target_user.id)
 
