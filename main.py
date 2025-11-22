@@ -464,8 +464,8 @@ async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user = update.message.reply_to_message.from_user
     target_rank = db.get_user_rank(chat_id, target_user.id)
 
-    if user_rank < target_rank:
-        await update.message.reply_text("❌ Вы не можете установить ник пользователю с более высоким рангом")
+    if user_rank <= target_rank:
+        await update.message.reply_text("❌ Вы можете установить ник только пользователю с более низким рангом")
         return
 
     text = update.message.text.strip()
@@ -495,8 +495,8 @@ async def remove_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user = update.message.reply_to_message.from_user
     target_rank = db.get_user_rank(chat_id, target_user.id)
 
-    if user_rank < target_rank:
-        await update.message.reply_text("❌ Вы не можете удалить ник пользователю с более высоким рангом")
+    if user_rank <= target_rank:
+        await update.message.reply_text("❌ Вы можете удалить ник только пользователю с более низким рангом")
         return
 
     nick = db.get_nick(chat_id, target_user.id)
