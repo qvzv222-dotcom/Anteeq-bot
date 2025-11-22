@@ -1214,13 +1214,10 @@ def display_user_profile(chat_id: int, user_id: int, user_name: str, user_userna
         profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
         profile_text += f"<b>Имя:</b> {user_link}\n"
         
-        if user_username:
-            profile_text += f"<b>Username:</b> @{user_username}\n"
-        
-        profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')} [{rank}]\n"
-        
         if nick:
             profile_text += f"<b>Ник:</b> {nick}\n"
+        
+        profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')} [{rank}]\n"
         
         if warnings:
             profile_text += f"<b>Предупреждения:</b> {len(warnings)}/3\n"
