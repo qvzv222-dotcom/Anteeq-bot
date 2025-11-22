@@ -217,6 +217,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
 
+    if data == "help_command":
+        await help_command(update, context)
+        return
+    
     if data == "nicks_help":
         text = """<b>👤 УПРАВЛЕНИЕ НИКАМАМИ</b>
 
@@ -1604,14 +1608,16 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Правила и приветствия чата
 • Система вознаграждений
 
-<b>⚙️ КОМАНДЫ:</b>
-<code>помощь</code>"""
+Для изучения действующих команд нажмите кнопку ниже:"""
         
-        await update.message.reply_text(capabilities_text, parse_mode='HTML')
+        keyboard = [[InlineKeyboardButton("📚 помощь", callback_data="help_command")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(capabilities_text, parse_mode='HTML', reply_markup=reply_markup)
 
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
