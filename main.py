@@ -502,6 +502,54 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     nicks_text += f"\n📊 <i>Всего ников: {len(nicks)}</i>"
     await update.message.reply_text(nicks_text.strip(), parse_mode='HTML')
 
+async def get_nick_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    target_user_id = None
+    
+    if update.message.reply_to_message:
+        target_user_id = update.message.reply_to_message.from_user.id
+    else:
+        text = update.message.text.strip()
+        parts = text.split()
+        
+        if len(parts) > 1:
+            username_arg = parts[1]
+            if username_arg.startswith('@'):
+                username_arg = username_arg[1:]
+            
+            try:
+                member = await context.bot.get_chat_member(chat_id, f"@{username_arg}")
+                target_user_id = member.user.id
+            except:
+                await update.message.reply_text(f"❌ Пользователь @{username_arg} не найден")
+                return
+        else:
+            target_user_id = user_id
+    
+    nick = db.get_nick(chat_id, target_user_id)
+    
+    if not nick:
+        if target_user_id == user_id:
+            await update.message.reply_text("❌ У вас нет установленного ника")
+        else:
+            try:
+                user = await context.bot.get_chat_member(chat_id, target_user_id)
+                user_link = f"<a href='tg://user?id={target_user_id}'>{user.user.first_name}</a>"
+                await update.message.reply_text(f"❌ У {user_link} нет установленного ника", parse_mode='HTML')
+            except:
+                await update.message.reply_text("❌ Ник не установлен")
+    else:
+        if target_user_id == user_id:
+            await update.message.reply_text(f"🏷️ <b>Ваш ник:</b> {nick}", parse_mode='HTML')
+        else:
+            try:
+                user = await context.bot.get_chat_member(chat_id, target_user_id)
+                user_link = f"<a href='tg://user?id={target_user_id}'>{user.user.first_name}</a>"
+                await update.message.reply_text(f"🏷️ <b>Ник {user_link}:</b> {nick}", parse_mode='HTML')
+            except:
+                await update.message.reply_text(f"🏷️ <b>Ник:</b> {nick}", parse_mode='HTML')
+
 async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     rules = db.get_rules(chat_id)
@@ -1190,6 +1238,7 @@ def setup_handlers(application):
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник другому\s+'), set_nick_other))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-ник другому$'), remove_nick_other))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^ник(?:\s|$)'), get_nick_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник\s+'), set_nick))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-ник$'), remove_nick))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^ники$'), show_nicks))
