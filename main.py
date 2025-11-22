@@ -1204,44 +1204,48 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔍 Ищу в интернете: <b>{query}</b>...", parse_mode='HTML')
     
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0'}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
         
-        search_url = f"https://api.bing.com/qsonrss.aspx?q={quote(query)}&count=3"
+        search_url = f"https://www.google.com/search?q={quote(query)}&num=3"
         response = requests.get(search_url, headers=headers, timeout=10)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'xml')
-        items = soup.find_all('item')
-        
-        if not items:
-            await update.message.reply_text("❌ Результатов не найдено")
-            return
-        
+        soup = BeautifulSoup(response.text, 'html.parser')
         results = []
-        for item in items[:3]:
-            title_tag = item.find('title')
-            link_tag = item.find('link')
-            desc_tag = item.find('description')
-            
-            if title_tag and link_tag:
-                title = title_tag.get_text(strip=True)
-                url = link_tag.get_text(strip=True)
-                snippet = desc_tag.get_text(strip=True) if desc_tag else ''
+        
+        for div in soup.find_all('div', class_='g')[:3]:
+            try:
+                title_elem = div.find('h3')
+                link_elem = div.find('a')
+                snippet_elem = div.find('span', class_='st')
                 
-                if title and url:
-                    results.append({'title': title, 'url': url, 'snippet': snippet})
+                if title_elem and link_elem:
+                    title = title_elem.get_text(strip=True)
+                    url = link_elem.get('href', '')
+                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
+                    
+                    if url and not url.startswith('http'):
+                        continue
+                    
+                    if title and url:
+                        results.append({'title': title, 'url': url, 'snippet': snippet})
+            except:
+                continue
         
         if not results:
             await update.message.reply_text("❌ Результатов не найдено")
             return
         
         response_text = "🌐 <b>Результаты поиска:</b>\n\n"
-        for i, result in enumerate(results, 1):
+        for i, result in enumerate(results[:3], 1):
             response_text += f"<b>{i}. {result['title']}</b>\n"
             if result['snippet']:
-                snippet = result['snippet'][:80].replace('<', '').replace('>', '') + "..." if len(result['snippet']) > 80 else result['snippet'].replace('<', '').replace('>', '')
+                snippet = result['snippet'][:100] + "..." if len(result['snippet']) > 100 else result['snippet']
                 response_text += f"<i>{snippet}</i>\n"
-            response_text += f"<a href='{result['url']}'>🔗 Ссылка</a>\n\n"
+            response_text += f"<a href='{result['url']}'>🔗 Открыть</a>\n\n"
         
         await update.message.reply_text(response_text, parse_mode='HTML')
         
