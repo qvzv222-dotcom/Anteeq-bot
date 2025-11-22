@@ -319,6 +319,24 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(admins_text.strip(), parse_mode='HTML')
 
+async def show_creator(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    creator_id = db.get_chat_creator(chat_id)
+
+    if not creator_id:
+        await update.message.reply_text("❌ Создатель этого чата не определён")
+        return
+
+    try:
+        user = await context.bot.get_chat_member(chat_id, creator_id)
+        full_name = user.user.first_name
+        if user.user.last_name:
+            full_name += f" {user.user.last_name}"
+        user_link = f"<a href='tg://user?id={creator_id}'>{full_name}</a>"
+        await update.message.reply_text(f"👑 <b>Создатель чата:</b> {user_link}", parse_mode='HTML')
+    except:
+        await update.message.reply_text(f"❌ Не удалось получить информацию о создателе (ID: {creator_id})")
+
 async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
@@ -1280,6 +1298,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^приветствие$'), show_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^админы$'), show_admins))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто создатель$'), show_creator))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^сбор$'), gather_members))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^назначить\s+'), set_rank))
     
