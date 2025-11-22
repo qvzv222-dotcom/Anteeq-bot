@@ -647,7 +647,7 @@ async def show_nicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if user.user.last_name:
                 full_name += f" {user.user.last_name}"
             user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
-            nicks_text += f"{i}️⃣ {nick} — {user_link}\n"
+            nicks_text += f"{i}. {nick} — {user_link}\n"
         except:
             continue
 
