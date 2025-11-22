@@ -1217,7 +1217,7 @@ def display_user_profile(chat_id: int, user_id: int, user_name: str, user_userna
         if user_username:
             profile_text += f"<b>Username:</b> @{user_username}\n"
         
-        profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')}\n"
+        profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')} [{rank}]\n"
         
         if nick:
             profile_text += f"<b>Ник:</b> {nick}\n"
