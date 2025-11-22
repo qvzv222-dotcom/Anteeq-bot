@@ -1050,8 +1050,8 @@ async def send_test_dm(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"Ошибка отправки ДМ: {str(e)}")
 
-def schedule_test_dm(context: ContextTypes.DEFAULT_TYPE):
-    context.job_queue.run_repeating(
+def schedule_test_dm(job_queue):
+    job_queue.run_repeating(
         send_test_dm,
         interval=300,
         first=5,
@@ -1371,7 +1371,7 @@ def main():
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
     # Запуск задачи отправки ДМ
-    schedule_test_dm(application.context)
+    schedule_test_dm(application.job_queue)
     
     print("✅ Бот полностью инициализирован!")
     print("✅ Keep-alive сервер работает - проект останется активным!")
