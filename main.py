@@ -757,8 +757,10 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     user_rank = db.get_user_rank(chat_id, user_id)
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
 
-    if not has_access(chat_id, user_id, "1.5"):
+    if not is_creator and not has_access(chat_id, user_id, "1.5"):
         await update.message.reply_text("❌ Недостаточно прав для снятия предупреждений")
         return
 
@@ -769,7 +771,7 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user = update.message.reply_to_message.from_user
     target_rank = db.get_user_rank(chat_id, target_user.id)
 
-    if user_rank < target_rank:
+    if not is_creator and user_rank < target_rank:
         await update.message.reply_text("❌ Вы не можете снять предупреждение у пользователя с более высоким рангом")
         return
 
@@ -781,7 +783,7 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     last_warn = db.get_last_warn_details(chat_id, target_user.id)
-    if last_warn:
+    if last_warn and not is_creator:
         giver_rank = db.get_user_rank(chat_id, last_warn['from_user_id'])
         if user_rank <= giver_rank:
             await update.message.reply_text("❌ Вы не можете снять предупреждение, выданное модератором равного или выше ранга")
@@ -805,8 +807,10 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     user_rank = db.get_user_rank(chat_id, user_id)
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
 
-    if not has_access(chat_id, user_id, "1.5"):
+    if not is_creator and not has_access(chat_id, user_id, "1.5"):
         await update.message.reply_text("❌ Недостаточно прав для снятия предупреждений")
         return
 
@@ -817,7 +821,7 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user = update.message.reply_to_message.from_user
     target_rank = db.get_user_rank(chat_id, target_user.id)
 
-    if user_rank < target_rank:
+    if not is_creator and user_rank < target_rank:
         await update.message.reply_text("❌ Вы не можете снять предупреждения у пользователя с более высоким рангом")
         return
 
@@ -828,10 +832,11 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
         return
 
-    highest_warn_giver_rank = db.get_highest_warn_giver_rank(chat_id, target_user.id)
-    if user_rank <= highest_warn_giver_rank:
-        await update.message.reply_text("❌ Вы не можете снять предупреждения, выданные модератором равного или выше ранга")
-        return
+    if not is_creator:
+        highest_warn_giver_rank = db.get_highest_warn_giver_rank(chat_id, target_user.id)
+        if user_rank <= highest_warn_giver_rank:
+            await update.message.reply_text("❌ Вы не можете снять предупреждения, выданные модератором равного или выше ранга")
+            return
 
     db.remove_all_warns(chat_id, target_user.id)
     
