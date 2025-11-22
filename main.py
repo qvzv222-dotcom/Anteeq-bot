@@ -1357,6 +1357,13 @@ def keep_alive():
     t = threading.Thread(target=run_flask, daemon=False)
     t.start()
 
+async def send_startup_message(app):
+    try:
+        await app.bot.send_message(TEST_USER_ID, "тест")
+        print(f"✅ Тестовое сообщение отправлено пользователю {TEST_USER_ID}")
+    except Exception as e:
+        print(f"❌ Ошибка отправки стартового сообщения: {str(e)}")
+
 def main():
     print("Инициализация базы данных...")
     db.init_database()
@@ -1372,6 +1379,9 @@ def main():
     
     # Запуск задачи отправки ДМ
     schedule_test_dm(application.job_queue)
+    
+    # Отправить одно тестовое сообщение при старте
+    application.post_init = lambda app: send_startup_message(app)
     
     print("✅ Бот полностью инициализирован!")
     print("✅ Keep-alive сервер работает - проект останется активным!")
