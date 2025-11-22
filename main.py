@@ -1645,21 +1645,27 @@ async def handle_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TY
             except Exception as e:
                 logging.error(f"Ошибка при отправке сообщения о возможностях бота: {e}")
 
+class MyUpdate:
+    def __init__(self, update):
+        self.update = update
+    
+    def __bool__(self):
+        return self.update.my_chat_member is not None
+
+async def check_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.my_chat_member:
+        await handle_my_chat_member(update, context)
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     
-    async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.my_chat_member:
-            await handle_my_chat_member(update, context)
+    from telegram.ext import BaseHandler
     
-    application.post_init = lambda: None
-    original_process_update = application.process_update
+    class MyChatMemberHandler(BaseHandler):
+        def check_update(self, update):
+            return update.my_chat_member is not None
     
-    async def new_process_update(update):
-        await process_update(update, None)
-        return await original_process_update(update)
-    
-    application.process_update = new_process_update
+    application.add_handler(MyChatMemberHandler(check_my_chat_member))
     
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
     
@@ -1758,6 +1764,8 @@ def main():
     print("✅ Keep-alive сервер работает - проект останется активным!")
     print("Добавьте бота в группу и дайте ему права администратора!")
     application.run_polling()
+    
+    print("Бот остановлен")
 
 if __name__ == '__main__':
     main()
