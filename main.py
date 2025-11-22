@@ -13,7 +13,6 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-from flask import Flask
 
 import db
 from profanity_list import contains_profanity
@@ -1735,32 +1734,9 @@ def setup_handlers(application):
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
-# Keep-alive сервер на порту 5000 (Replit держит его живым)
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is running on Replit!"
-
-@app.route('/health')
-def health():
-    return {"status": "ok"}, 200
-
-def run_flask():
-    print("🌐 Keep-alive сервер запущен на http://0.0.0.0:5000")
-    app.run(host='0.0.0.0', port=5000, debug=False)
-
-def keep_alive():
-    t = threading.Thread(target=run_flask, daemon=False)
-    t.start()
-
 def main():
     print("Инициализация базы данных...")
     db.init_database()
-    
-    print("Запуск keep-alive сервера на порту 5000...")
-    keep_alive()
-    time.sleep(2)
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
@@ -1768,7 +1744,6 @@ def main():
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
     print("✅ Бот полностью инициализирован!")
-    print("✅ Keep-alive сервер работает - проект останется активным!")
     print("Добавьте бота в группу и дайте ему права администратора!")
     application.run_polling()
     
