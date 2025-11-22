@@ -7,9 +7,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 import threading
 import time
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import quote
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -1192,79 +1189,6 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
-async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
-    
-    if len(parts) < 2 or not parts[1].strip():
-        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск Python")
-        return
-    
-    query = parts[1]
-    await update.message.reply_text(f"🔍 Ищу: <b>{query}</b>...", parse_mode='HTML')
-    
-    try:
-        headers = {'User-Agent': 'Telegram-Bot/1.0'}
-        
-        search_url = "https://en.wikipedia.org/w/api.php"
-        search_params = {
-            'action': 'query',
-            'list': 'search',
-            'srsearch': query,
-            'format': 'json',
-            'srLimit': 1
-        }
-        
-        response = requests.get(search_url, params=search_params, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        search_results = data.get('query', {}).get('search', [])
-        
-        if not search_results:
-            await update.message.reply_text("❌ Результатов не найдено. Попробуйте другой запрос.")
-            return
-        
-        first_result = search_results[0]
-        title = first_result.get('title', '')
-        
-        extract_params = {
-            'action': 'query',
-            'titles': title,
-            'prop': 'extracts',
-            'explaintext': True,
-            'exintro': True,
-            'format': 'json'
-        }
-        
-        extract_response = requests.get(search_url, params=extract_params, headers=headers, timeout=10)
-        extract_response.raise_for_status()
-        extract_data = extract_response.json()
-        
-        pages = extract_data.get('query', {}).get('pages', {})
-        page_content = ''
-        
-        for page_id, page_data in pages.items():
-            page_content = page_data.get('extract', '')
-            break
-        
-        if not page_content:
-            await update.message.reply_text(f"❌ Не удалось получить информацию о '{title}'")
-            return
-        
-        first_paragraph = page_content.split('\n')[0]
-        if len(first_paragraph) > 250:
-            first_paragraph = first_paragraph[:250].rsplit(' ', 1)[0] + '...'
-        
-        wiki_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
-        
-        response_text = f"<b>📖 {title}</b>\n\n{first_paragraph}\n\n<a href='{wiki_url}'>🔗 Читать полностью</a>"
-        await update.message.reply_text(response_text, parse_mode='HTML')
-        
-    except Exception as e:
-        logging.error(f"Web search error: {str(e)}")
-        await update.message.reply_text(f"❌ Ошибка поиска: {str(e)}")
-
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1296,8 +1220,6 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^поиск\s+'), web_search))
-    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
