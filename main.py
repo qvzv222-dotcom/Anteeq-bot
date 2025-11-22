@@ -1189,6 +1189,59 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
+async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать профиль текущего пользователя"""
+    user = update.message.from_user
+    chat_id = update.message.chat_id
+    user_id = user.id
+    
+    # Получаем данные о пользователе
+    rank = db.get_user_rank(chat_id, user_id)
+    nick = db.get_nick(chat_id, user_id)
+    warnings = db.get_user_warnings(chat_id, user_id)
+    awards = db.get_user_awards(chat_id, user_id)
+    is_banned = db.is_user_banned(chat_id, user_id)
+    mute_info = db.get_mute_end_time(chat_id, user_id)
+    is_muted = mute_info is not None
+    
+    rank_names = {
+        0: "👤 Участник",
+        1: "🛡️ Модератор чата",
+        2: "📋 Наборщик", 
+        3: "⚔️ Заместитель главы клана",
+        4: "👑 Глава клана",
+        5: "🔱 Глава альянса"
+    }
+    
+    # Формируем текст профиля
+    user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
+    profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
+    profile_text += f"<b>Имя:</b> {user_link}\n"
+    
+    if user.username:
+        profile_text += f"<b>Username:</b> @{user.username}\n"
+    
+    profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')}\n"
+    
+    if nick:
+        profile_text += f"<b>Ник:</b> {nick}\n"
+    
+    profile_text += f"<b>Предупреждения:</b> {len(warnings)}/3\n"
+    
+    if is_banned:
+        profile_text += "🚫 <b>Статус:</b> <u>Забанен</u>\n"
+    elif is_muted:
+        profile_text += "🔇 <b>Статус:</b> <u>Заммучен</u>\n"
+    else:
+        profile_text += "✅ <b>Статус:</b> <u>Активен</u>\n"
+    
+    if awards and len(awards) > 0:
+        profile_text += f"\n<b>🏆 Награды ({len(awards)}):</b>\n"
+        for award in awards:
+            profile_text += f"  • {award}\n"
+    
+    await update.message.reply_text(profile_text, parse_mode='HTML')
+
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1220,6 +1273,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
