@@ -1605,7 +1605,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Система вознаграждений
 
 <b>⚙️ КОМАНДЫ:</b>
-<code>помощь</code> - справка | <code>команды</code> - все команды | <code>дк</code> - доступ"""
+<code>помощь</code>"""
         
         await update.message.reply_text(capabilities_text, parse_mode='HTML')
 
