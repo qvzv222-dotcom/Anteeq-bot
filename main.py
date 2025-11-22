@@ -218,7 +218,39 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if data == "help_command":
-        await help_command(update, context)
+        keyboard = [
+            [InlineKeyboardButton("👤 Ники", callback_data="nicks_help"), InlineKeyboardButton("⚠️ Преды", callback_data="warns_help")],
+            [InlineKeyboardButton("📋 Правила", callback_data="rules_help")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        help_text = """
+╔═══════════════════════════════════════╗
+║  📖 СПРАВКА ПО КОМАНДАМ БОТА  📖  ║
+╚═══════════════════════════════════════╝
+
+<b>👤 УПРАВЛЕНИЕ НИКАМАМИ</b>
+  • <code>+ник [ник]</code> - установить свой ник
+  • <code>-ник</code> - удалить свой ник
+  • <code>ники</code> - список всех ников
+
+<b>👑 АДМИНИСТРИРОВАНИЕ</b>
+  • <code>админы</code> - список администраторов
+  • <code>дк</code> - управление правами доступа
+
+<b>⚠️ СИСТЕМА НАКАЗАНИЙ</b>
+  • <code>преды</code> - посмотреть свои предупреждения
+  • <code>преды [ответ]</code> - показать преды пользователю
+
+<b>📋 ПРАВИЛА И ИНФОРМАЦИЯ</b>
+  • <code>правила</code> - показать правила чата
+  • <code>приветствие</code> - показать приветствие чата
+  • <code>помощь</code> - показать эту справку
+
+Нажмите на кнопки ниже для подробной информации:
+""".strip()
+        
+        await query.edit_message_text(help_text, reply_markup=reply_markup, parse_mode='HTML')
         return
     
     if data == "nicks_help":
@@ -267,7 +299,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         return
 
-    await query.edit_message_text(text, parse_mode='HTML')
+    keyboard = [
+        [InlineKeyboardButton("👤 Ники", callback_data="nicks_help"), InlineKeyboardButton("⚠️ Преды", callback_data="warns_help")],
+        [InlineKeyboardButton("📋 Правила", callback_data="rules_help")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
 
 async def chat_code_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
