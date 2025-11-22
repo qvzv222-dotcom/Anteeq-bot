@@ -389,6 +389,11 @@ async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+
+    if target_rank > user_rank:
+        await update.message.reply_text("❌ Вы не можете изменить ранг пользователю с более высоким рангом")
+        return
     
     rank_names = {
         0: "Участник",
