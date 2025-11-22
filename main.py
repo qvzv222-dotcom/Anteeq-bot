@@ -16,6 +16,7 @@ from telegram.ext import (
 from flask import Flask
 
 import db
+from profanity_list import contains_profanity
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1287,6 +1288,52 @@ async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"who_is_this error: {str(e)}")
         await update.message.reply_text(f"❌ Ошибка: {str(e)}")
 
+async def toggle_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE, enable: bool):
+    """Включить или отключить фильтр сквернословия"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    db.set_profanity_filter(chat_id, user_id, enable)
+    
+    status = "включен ✅" if enable else "отключен ❌"
+    await update.message.reply_text(f"Фильтр сквернословия {status}")
+
+async def enable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await toggle_profanity_filter(update, context, True)
+
+async def disable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await toggle_profanity_filter(update, context, False)
+
+async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Проверить сообщение на мат и выдать предупреждение если нужно"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    filter_enabled = db.get_profanity_filter_status(chat_id, user_id)
+    
+    if filter_enabled and contains_profanity(update.message.text):
+        user = update.message.from_user
+        await update.message.delete()
+        
+        db.add_warn(chat_id, user_id, chat_id, "Использование нецензурной лексики")
+        
+        warns = db.get_warns(chat_id, user_id)
+        warn_count = len(warns) if warns else 0
+        
+        if warn_count >= 3:
+            db.add_ban(chat_id, user_id)
+            await context.bot.send_message(
+                chat_id,
+                f"❌ Пользователь {user.first_name} забанен за использование мата (3+ предупреждения)"
+            )
+        else:
+            user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
+            await context.bot.send_message(
+                chat_id,
+                f"⚠️ {user_link} предупреждение за мат ({warn_count}/3)",
+                parse_mode='HTML'
+            )
+
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1362,7 +1409,13 @@ def setup_handlers(application):
 
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
 
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), disable_profanity_filter))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), enable_profanity_filter))
+
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Check profanity first
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_profanity), group=1)
     
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)

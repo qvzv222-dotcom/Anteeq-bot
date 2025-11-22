@@ -106,6 +106,16 @@ def init_database():
         )
     ''')
     
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS profanity_filter (
+            chat_id BIGINT,
+            user_id BIGINT,
+            filter_enabled BOOLEAN DEFAULT TRUE,
+            PRIMARY KEY (chat_id, user_id),
+            FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE
+        )
+    ''')
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -749,6 +759,34 @@ def import_chat_settings(target_chat_id: int, source_chat_id: int):
             FROM (SELECT welcome_message, rules, access_control FROM chats WHERE chat_id = %s) AS src
             WHERE chat_id = %s
         ''', (source_chat_id, target_chat_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def get_profanity_filter_status(chat_id: int, user_id: int) -> bool:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT filter_enabled FROM profanity_filter WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else True
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return True
+
+def set_profanity_filter(chat_id: int, user_id: int, enabled: bool):
+    try:
+        ensure_chat_exists(chat_id)
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO profanity_filter (chat_id, user_id, filter_enabled)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (chat_id, user_id) DO UPDATE SET filter_enabled = %s
+        ''', (chat_id, user_id, enabled, enabled))
         conn.commit()
         cur.close()
         conn.close()
