@@ -14,7 +14,6 @@ from telegram.ext import (
     ContextTypes, filters
 )
 from flask import Flask
-import requests
 
 import db
 
@@ -1274,49 +1273,38 @@ def setup_handlers(application):
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
-# Keep-alive сервер
+# Keep-alive сервер на порту 5000 (Replit держит его живым)
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is alive!"
+    return "Bot is running on Replit!"
+
+@app.route('/health')
+def health():
+    return {"status": "ok"}, 200
 
 def run_flask():
-    app.run(host='0.0.0.0', port=8080)
+    print("🌐 Keep-alive сервер запущен на http://0.0.0.0:5000")
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
 def keep_alive():
-    t = threading.Thread(target=run_flask, daemon=True)
+    t = threading.Thread(target=run_flask, daemon=False)
     t.start()
-
-# Функция для самопинга
-def ping_self():
-    time.sleep(5)  # Дать Flask время на инициализацию
-    print("🔄 Самопинг запущен, первый пинг через 5 сек...")
-    
-    while True:
-        try:
-            response = requests.get("http://localhost:8080", timeout=10)
-            print(f"✅ PING: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Status: {response.status_code}")
-        except Exception as e:
-            print(f"❌ PING ERROR: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {str(e)}")
-        time.sleep(300)  # 5 минут
 
 def main():
     print("Инициализация базы данных...")
     db.init_database()
     
-    print("Запуск keep-alive сервера на порту 8080...")
+    print("Запуск keep-alive сервера на порту 5000...")
     keep_alive()
     time.sleep(2)
-    
-    print("Запуск самопинга (отправляет запрос каждые 5 минут)...")
-    ping_thread = threading.Thread(target=ping_self, daemon=False)  # Non-daemon - будет держать процесс
-    ping_thread.start()
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
     print("✅ Бот полностью инициализирован!")
+    print("✅ Keep-alive сервер работает - проект останется активным!")
     print("Добавьте бота в группу и дайте ему права администратора!")
     application.run_polling()
 
