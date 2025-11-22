@@ -677,12 +677,8 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_rank = db.get_user_rank(chat_id, user_id)
 
-    if user_rank == 5:
-        await update.message.reply_text("❌ Ранг 5 не может снимать предупреждения")
-        return
-
-    if user_rank < 3:
-        await update.message.reply_text("❌ Требуется ранг 3 или выше")
+    if not has_access(chat_id, user_id, "1.5"):
+        await update.message.reply_text("❌ Недостаточно прав для снятия предупреждений")
         return
 
     if not update.message.reply_to_message:
@@ -719,17 +715,13 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Снять все предупреждения пользователю (ранг 3+)"""
+    """Снять все предупреждения пользователю"""
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     user_rank = db.get_user_rank(chat_id, user_id)
 
-    if user_rank == 5:
-        await update.message.reply_text("❌ Ранг 5 не может снимать предупреждения")
-        return
-
-    if user_rank < 3:
-        await update.message.reply_text("❌ Требуется ранг 3 или выше")
+    if not has_access(chat_id, user_id, "1.5"):
+        await update.message.reply_text("❌ Недостаточно прав для снятия предупреждений")
         return
 
     if not update.message.reply_to_message:
