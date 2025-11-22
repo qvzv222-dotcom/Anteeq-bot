@@ -674,8 +674,10 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
 
-    if not has_access(chat_id, user_id, "1.5"):
+    if not is_creator and not has_access(chat_id, user_id, "1.5"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -684,10 +686,6 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
-
-    if target_user.id == user_id:
-        await update.message.reply_text("❌ Вы не можете снимать предупреждения у себя", parse_mode='HTML')
-        return
 
     warns = db.get_warns(chat_id, target_user.id)
 
@@ -745,8 +743,10 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
 
-    if not has_access(chat_id, user_id, "1.3"):
+    if not is_creator and not has_access(chat_id, user_id, "1.3"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -755,10 +755,6 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
-
-    if target_user.id == user_id:
-        await update.message.reply_text("❌ Вы не можете разбанить себя", parse_mode='HTML')
-        return
 
     db.remove_ban(chat_id, target_user.id)
 
@@ -861,8 +857,10 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
 
-    if not has_access(chat_id, user_id, "1.2"):
+    if not is_creator and not has_access(chat_id, user_id, "1.2"):
         await update.message.reply_text("Недостаточно прав")
         return
 
@@ -871,10 +869,6 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
-
-    if target_user.id == user_id:
-        await update.message.reply_text("❌ Вы не можете размучивать себя", parse_mode='HTML')
-        return
 
     db.remove_mute(chat_id, target_user.id)
 
