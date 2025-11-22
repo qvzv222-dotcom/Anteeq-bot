@@ -1207,15 +1207,15 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         headers = {'User-Agent': 'Telegram-Bot/1.0'}
         
         search_url = "https://en.wikipedia.org/w/api.php"
-        params = {
+        search_params = {
             'action': 'query',
             'list': 'search',
             'srsearch': query,
             'format': 'json',
-            'srLimit': 3
+            'srLimit': 1
         }
         
-        response = requests.get(search_url, params=params, headers=headers, timeout=10)
+        response = requests.get(search_url, params=search_params, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -1225,20 +1225,41 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Результатов не найдено. Попробуйте другой запрос.")
             return
         
-        results_text = "🌐 <b>Результаты поиска:</b>\n\n"
+        first_result = search_results[0]
+        title = first_result.get('title', '')
         
-        for i, result in enumerate(search_results[:3], 1):
-            title = result.get('title', 'Без названия')
-            snippet = result.get('snippet', '')
-            snippet_clean = snippet.replace('<span class="searchmatch">', '').replace('</span>', '')[:100]
-            wiki_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
-            
-            results_text += f"<b>{i}. {title}</b>\n"
-            if snippet_clean:
-                results_text += f"<i>{snippet_clean}...</i>\n"
-            results_text += f"<a href='{wiki_url}'>🔗 Читать</a>\n\n"
+        extract_params = {
+            'action': 'query',
+            'titles': title,
+            'prop': 'extracts',
+            'explaintext': True,
+            'exintro': True,
+            'format': 'json'
+        }
         
-        await update.message.reply_text(results_text, parse_mode='HTML')
+        extract_response = requests.get(search_url, params=extract_params, headers=headers, timeout=10)
+        extract_response.raise_for_status()
+        extract_data = extract_response.json()
+        
+        pages = extract_data.get('query', {}).get('pages', {})
+        page_content = ''
+        
+        for page_id, page_data in pages.items():
+            page_content = page_data.get('extract', '')
+            break
+        
+        if not page_content:
+            await update.message.reply_text(f"❌ Не удалось получить информацию о '{title}'")
+            return
+        
+        first_paragraph = page_content.split('\n')[0]
+        if len(first_paragraph) > 250:
+            first_paragraph = first_paragraph[:250].rsplit(' ', 1)[0] + '...'
+        
+        wiki_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+        
+        response_text = f"<b>📖 {title}</b>\n\n{first_paragraph}\n\n<a href='{wiki_url}'>🔗 Читать полностью</a>"
+        await update.message.reply_text(response_text, parse_mode='HTML')
         
     except Exception as e:
         logging.error(f"Web search error: {str(e)}")
