@@ -1337,9 +1337,27 @@ def run_flask():
     print("🌐 Keep-alive сервер запущен на http://0.0.0.0:5000")
     app.run(host='0.0.0.0', port=5000, debug=False)
 
+def ping_self():
+    """Периодически пингует сам себя чтобы Replit не отключил проект"""
+    while True:
+        try:
+            time.sleep(60)  # Пинг каждые 60 секунд
+            import urllib.request
+            urllib.request.urlopen('http://localhost:5000/health', timeout=5)
+            print(f"[Keep-alive] {datetime.now().strftime('%H:%M:%S')} - Ping OK")
+        except Exception as e:
+            print(f"[Keep-alive] Ping failed: {str(e)}")
+
 def keep_alive():
+    # Flask сервер
     t = threading.Thread(target=run_flask, daemon=False)
     t.start()
+    
+    # Пингер для более агрессивного keep-alive
+    ping_thread = threading.Thread(target=ping_self, daemon=False)
+    ping_thread.start()
+    
+    print("✅ Keep-alive: Flask сервер + самопингование каждые 60 секунд")
 
 def main():
     print("Инициализация базы данных...")
