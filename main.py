@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import threading
 import time
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
