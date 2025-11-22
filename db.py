@@ -139,6 +139,16 @@ def init_database():
     except Exception as e:
         pass
     
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('ALTER TABLE chat_settings ADD COLUMN IF NOT EXISTS max_warns INT DEFAULT 3')
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        pass
+    
     print("База данных инициализирована")
 
 def ensure_chat_exists(chat_id: int):
@@ -810,12 +820,12 @@ def set_max_warns(chat_id: int, max_warns: int):
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO chat_settings (chat_id, max_warns)
-            VALUES (%s, %s)
-            ON CONFLICT (chat_id) DO UPDATE SET max_warns = %s
-        ''', (chat_id, max_warns, max_warns))
+            INSERT INTO chat_settings (chat_id, max_warns, profanity_filter_enabled)
+            VALUES (%s, %s, TRUE)
+            ON CONFLICT (chat_id) DO UPDATE SET max_warns = EXCLUDED.max_warns
+        ''', (chat_id, max_warns))
         conn.commit()
         cur.close()
         conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+    except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
         pass
