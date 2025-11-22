@@ -1131,10 +1131,8 @@ def get_section_from_command(command: str) -> str:
         return "1.3"
     elif command_lower in ["варн", "пред"]:
         return "1.4"
-    elif command_lower in ["снять пред", "снять варн"]:
+    elif command_lower in ["снять пред", "снять варн", "снять все преды"]:
         return "1.5"
-    elif command_lower in ["снять все преды"]:
-        return "1.6"
     elif command_lower in ["+ник", "-ник"]:
         return "2.1"
     elif command_lower in ["+ник другому", "-ник другому"]:
@@ -1185,7 +1183,6 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         r_1_3 = access_control.get('1.3', 3)
         r_1_4 = access_control.get('1.4', 1)
         r_1_5 = access_control.get('1.5', 1)
-        r_1_6 = access_control.get('1.6', 3)
         r_2_1 = access_control.get('2.1', 0)
         r_2_2 = access_control.get('2.2', 2)
         r_3_1 = access_control.get('3.1', 3)
@@ -1203,8 +1200,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             f"1.2. 🔊 Размут: <i>размут, говори</i> {rank_emoji[r_1_2]}\n"
             f"1.3. 🔨 Бан и кик: <i>бан, разбан, кик</i> {rank_emoji[r_1_3]}\n"
             f"1.4. ⚠️ Выдать предупреждение: <i>пред, варн</i> {rank_emoji[r_1_4]}\n"
-            f"1.5. 🔓 Снять предупреждение: <i>снять пред, снять варн</i> {rank_emoji[r_1_5]}\n"
-            f"1.6. 🗑️ Снять все преды: <i>снять все преды</i> {rank_emoji[r_1_6]}\n\n"
+            f"1.5. 🔓 Снять предупреждения: <i>снять пред, снять все преды</i> {rank_emoji[r_1_5]}\n\n"
             "🟡 <b>РАЗДЕЛ 2: Система ников</b>\n"
             f"2.1. ✏️ Установить себе ник: <i>+ник</i> {rank_emoji[r_2_1]}\n"
             f"2.2. 🗑️ Удалить себе ник: <i>-ник</i> {rank_emoji[r_2_1]}\n"
