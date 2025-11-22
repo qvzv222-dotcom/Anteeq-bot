@@ -1307,6 +1307,32 @@ async def enable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_
 async def disable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await toggle_profanity_filter(update, context, False)
 
+async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Установить максимальное количество предупреждений (только ранг 5)"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    user_rank = db.get_user_rank(chat_id, user_id)
+    
+    if user_rank != 5:
+        await update.message.reply_text("❌ Только ранг 5 может менять максимум предупреждений")
+        return
+    
+    try:
+        args = update.message.text.split()
+        if len(args) < 2:
+            await update.message.reply_text("❌ Использование: !преды {число}")
+            return
+        
+        max_warns = int(args[1])
+        if max_warns < 1:
+            await update.message.reply_text("❌ Число должно быть больше 0")
+            return
+        
+        db.set_max_warns(chat_id, max_warns)
+        await update.message.reply_text(f"✅ Максимум предупреждений установлен на {max_warns}")
+    except ValueError:
+        await update.message.reply_text("❌ Введите корректное число")
+
 async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Проверить сообщение на мат и выдать предупреждение если нужно"""
     chat_id = update.message.chat_id
@@ -1322,18 +1348,19 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         warns = db.get_warns(chat_id, user_id)
         warn_count = len(warns) if warns else 0
+        max_warns = db.get_max_warns(chat_id)
         
-        if warn_count >= 3:
+        if warn_count >= max_warns:
             db.add_ban(chat_id, user_id)
             await context.bot.send_message(
                 chat_id,
-                f"❌ Пользователь {user.first_name} забанен за использование мата (3+ предупреждения)"
+                f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count}+ предупреждения)"
             )
         else:
             user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
             await context.bot.send_message(
                 chat_id,
-                f"⚠️ {user_link} предупреждение за мат ({warn_count}/3)",
+                f"⚠️ {user_link} предупреждение за мат ({warn_count}/{max_warns})",
                 parse_mode='HTML'
             )
 
@@ -1414,6 +1441,7 @@ def setup_handlers(application):
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!преды'), set_max_warns_command))
 
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     

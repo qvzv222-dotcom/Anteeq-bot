@@ -110,6 +110,7 @@ def init_database():
         CREATE TABLE IF NOT EXISTS chat_settings (
             chat_id BIGINT PRIMARY KEY,
             profanity_filter_enabled BOOLEAN DEFAULT TRUE,
+            max_warns INT DEFAULT 3,
             FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE
         )
     ''')
@@ -785,6 +786,34 @@ def set_profanity_filter_enabled(chat_id: int, enabled: bool):
             VALUES (%s, %s)
             ON CONFLICT (chat_id) DO UPDATE SET profanity_filter_enabled = %s
         ''', (chat_id, enabled, enabled))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def get_max_warns(chat_id: int) -> int:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT max_warns FROM chat_settings WHERE chat_id = %s', (chat_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else 3
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return 3
+
+def set_max_warns(chat_id: int, max_warns: int):
+    try:
+        ensure_chat_exists(chat_id)
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO chat_settings (chat_id, max_warns)
+            VALUES (%s, %s)
+            ON CONFLICT (chat_id) DO UPDATE SET max_warns = %s
+        ''', (chat_id, max_warns, max_warns))
         conn.commit()
         cur.close()
         conn.close()
