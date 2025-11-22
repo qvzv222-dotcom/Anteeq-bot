@@ -1177,8 +1177,6 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=-2)
-    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
@@ -1221,6 +1219,9 @@ def setup_handlers(application):
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
 
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Check links last (after all command handlers) to avoid blocking commands
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
 def start_health_check_server():
     """Start health check server in separate process for UptimeBot monitoring"""
