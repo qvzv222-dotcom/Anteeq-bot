@@ -5,8 +5,6 @@ import string
 import re
 from datetime import datetime, timedelta
 from typing import Optional
-import threading
-import time
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -27,7 +25,7 @@ logging.getLogger('httpx').setLevel(logging.WARNING)
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 if not BOT_TOKEN:
     print("Ошибка: BOT_TOKEN не найден!")
-    print("Добавьте BOT_TOKEN в Secrets (Environment Variables)")
+    print("Добавьте BOT_TOKEN в переменные окружения")
     exit(1)
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
@@ -47,168 +45,51 @@ def has_access(chat_id: int, user_id: int, section: str) -> bool:
     access_control = db.get_access_control(chat_id)
     required_rank = access_control.get(section, 5)
     user_rank = get_user_rank(chat_id, user_id)
-    
-    creator = db.get_chat_creator(chat_id)
-    if creator == user_id:
-        return True
-    
     return user_rank >= required_rank
 
-async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
-    expired_mutes = db.get_expired_mutes()
-    
-    for chat_id, user_id in expired_mutes:
-        try:
-            user = await context.bot.get_chat_member(chat_id, user_id)
-            user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
-            await context.bot.send_message(
-                chat_id,
-                f" Срок наказания {user_link} истек. Пользователь размучен.",
-                parse_mode='HTML'
-            )
-        except Exception as e:
-            logging.error(f"Ошибка при отправке уведомления об истечении мута: {str(e)}")
-        finally:
-            db.remove_mute(chat_id, user_id)
-
 async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.from_user:
+    if not update.message or not update.message.new_chat_members:
         return
     
-    user = update.message.from_user
     chat_id = update.message.chat_id
+    creator = db.get_chat_creator(chat_id)
     
-    if is_creator_username(user.username):
-        current_rank = db.get_user_rank(chat_id, user.id)
-        if current_rank < 5:
-            db.set_user_rank(chat_id, user.id, 5)
-            creator = db.get_chat_creator(chat_id)
-            if not creator:
-                db.set_chat_creator(chat_id, user.id)
+    if not creator:
+        return
+    
+    try:
+        creator_member = await context.bot.get_chat_member(chat_id, creator)
+        if creator_member:
+            db.set_user_rank(chat_id, creator, 5)
+    except:
+        pass
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type == 'private':
-        try:
-            bot_info = await context.bot.get_me()
-            bot_username = bot_info.username
-            add_bot_url = f"https://t.me/{bot_username}?startgroup=true"
-        except:
-            add_bot_url = "https://t.me/?startgroup=true"
-        
-        keyboard = [
-            [InlineKeyboardButton("➕ Добавить бота в группу", url=add_bot_url)]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        welcome_text = """👋 Добавьте меня в вашу группу или супергруппу!
+    if update.message.chat.type != 'private':
+        return
+    
+    try:
+        bot = context.bot
+        bot_username = bot.username or "YourBotName"
+    except:
+        bot_username = "YourBotName"
+    
+    welcome_text = f"""👋 Привет! Я администрационный бот для управления группами в Telegram.
 
-После добавления вы получите полный доступ к функциям управления чатом:
-• 🔨 Модерация: мут, бан, кик, предупреждения
-• 👤 Управление никнеймами и профилями
-• ⚙️ Гибкая система доступа к командам
-• 🏆 Система вознаграждения и рангов
-• 📋 Правила и приветствия чата
-• 🎯 И многое другое!
+🎯 Основные возможности:
+• 👤 Система ников для участников
+• ⚠️ Система наказаний (варны, муты, баны)
+• 👑 Ранговая система (0-5 уровней)
+• 📋 Правила чата и приветствия
+• 🎁 Система наград за активность
+• 🚫 Фильтр нецензурной лексики
 
-Нажмите кнопку ниже, чтобы добавить бота:"""
-        
-        await update.message.reply_text(welcome_text, reply_markup=reply_markup)
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("👤 Ники", callback_data="nicks_help"), InlineKeyboardButton("⚠️ Преды", callback_data="warns_help")],
-        [InlineKeyboardButton("📋 Правила", callback_data="rules_help")]
-    ]
+Чтобы добавить меня в группу, нажмите кнопку ниже 👇"""
+    
+    keyboard = [[InlineKeyboardButton("➕ Добавить в группу", url=f"https://t.me/{bot_username}?startgroup=true")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    help_text = """
-╔═══════════════════════════════════════╗
-║  📖 СПРАВКА ПО КОМАНДАМ БОТА  📖  ║
-╚═══════════════════════════════════════╝
-
-<b>👤 УПРАВЛЕНИЕ НИКАМАМИ</b>
-  • <code>+ник [ник]</code> - установить свой ник
-  • <code>-ник</code> - удалить свой ник
-  • <code>ники</code> - список всех ников
-
-<b>👑 АДМИНИСТРИРОВАНИЕ</b>
-  • <code>админы</code> - список администраторов
-  • <code>дк</code> - управление правами доступа
-
-<b>⚠️ СИСТЕМА НАКАЗАНИЙ</b>
-  • <code>преды</code> - посмотреть свои предупреждения
-  • <code>преды [ответ]</code> - показать преды пользователю
-
-<b>📋 ПРАВИЛА И ИНФОРМАЦИЯ</b>
-  • <code>правила</code> - показать правила чата
-  • <code>приветствие</code> - показать приветствие чата
-  • <code>помощь</code> - показать эту справку
-
-Нажмите на кнопки ниже для подробной информации:
-""".strip()
-
-    await update.message.reply_text(
-        help_text,
-        reply_markup=reply_markup,
-        parse_mode='HTML'
-    )
-
-async def commands_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    commands_text = """<b>📚 ПОЛНЫЙ СПИСОК КОМАНД</b>
-
-<b>🔴 РАЗДЕЛ 1: СИСТЕМА НАКАЗАНИЙ</b>
-<code>мут [время] [причина]</code> - выдать мут пользователю
-<code>размут, говори</code> - снять мут
-<code>бан [причина]</code> - забанить пользователя
-<code>разбан</code> - разбанить пользователя
-<code>кик [причина]</code> - кикнуть пользователя
-<code>пред, варн [причина]</code> - выдать предупреждение
-<code>снять пред, снять варн</code> - снять одно предупреждение
-<code>снять все преды</code> - снять все предупреждения
-
-<b>🟡 РАЗДЕЛ 2: СИСТЕМА НИКОВ</b>
-<code>+ник [ник]</code> - установить себе ник
-<code>-ник</code> - удалить свой ник
-<code>ник, ники</code> - посмотреть ники пользователей
-<code>+ник другому [ник]</code> - установить ник другому (ответ на сообщение)
-<code>-ник другому</code> - удалить ник другому (ответ на сообщение)
-
-<b>🟢 РАЗДЕЛ 3: ИНФОРМИРОВАНИЕ</b>
-<code>правила</code> - показать правила чата
-<code>+правила [текст]</code> - установить новые правила
-<code>приветствие</code> - показать приветствие
-<code>+приветствие [текст]</code> - установить приветствие
-<code>кто я, кто ты</code> - показать мой профиль
-<code>админы</code> - список администраторов
-
-<b>🔵 РАЗДЕЛ 4: АДМИНИСТРАТОРСКИЕ</b>
-<code>дк</code> - управление доступом к командам
-<code>дк [команда] [ранг]</code> - изменить требуемый ранг для команды
-<code>+маты</code> - отключить фильтр мата (создатель)
-<code>-маты</code> - включить фильтр мата (создатель)
-<code>!преды [число]</code> - установить макс. количество предупреждений
-<code>дк ссылки [ранг]</code> - установить ранг для отправки ссылок
-<code>сбор</code> - пинг всех участников
-<code>назначить [ответ на сообщение] [ранг 0-5]</code> - назначить ранг
-
-<b>🟣 РАЗДЕЛ 5: СИСТЕМА ВОЗНАГРАЖДЕНИЯ</b>
-<code>!наградить {награда}</code> - выдать награду пользователю
-<code>!снять награды [ответ]</code> - снять все награды
-<code>Наградной список</code> - показать доступные награды
-
-<b>👑 СПЕЦИАЛЬНЫЕ КОМАНДЫ (создатель)</b>
-<code>!завещание [ответ]</code> - передать права создателя
-<code>-завещание</code> - отменить завещание
-<code>!код чата</code> - получить код чата
-<code>!импорт [код]</code> - импортировать настройки из другого чата
-
-<b>ℹ️ СПРАВОЧНЫЕ</b>
-<code>помощь</code> - интерактивная справка
-<code>команды</code> - этот список
-<code>бот</code> - ответ от бота
-<code>преды [ответ]</code> - показать преды пользователю"""
-
-    await update.message.reply_text(commands_text, parse_mode='HTML')
+    
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -258,27 +139,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>-ник</code> - удалить свой ник
 
 <code>ники</code> - показать список всех ников в чате
-         с указанием кто их установил"""
-    elif data == "admins_help":
-        text = """<b>👑 АДМИНИСТРАТОРЫ</b>
 
-<code>админы</code> - показать список администраторов чата
-
-<code>дк</code> - открыть панель управления доступом
-Позволяет настроить минимальный ранг для:
-  • Изменения прав доступа
-  • Установки никнеймов
-  • Управления наградами
-  • И других функций"""
+Администраторы могут:
+  • Устанавливать ники другим пользователям
+  • Удалять ники других пользователей"""
     elif data == "warns_help":
         text = """<b>⚠️ СИСТЕМА ПРЕДУПРЕЖДЕНИЙ</b>
 
-<code>преды</code> - посмотреть свои предупреждения
-
-<code>преды</code> (ответом на сообщение) - показать преды пользователю
-
-<b>❌ 3 предупреждения = БАН</b>
-
+Пользователи:
+  • <code>преды</code> - посмотреть свои предупреждения
+  
 Администраторы могут:
   • Давать предупреждения
   • Снимать предупреждения
@@ -306,23 +176,30 @@ async def chat_code_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "4"):
+    if not has_access(chat_id, user_id, "3.5"):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    chat_code = db.get_chat_code(chat_id)
-    if not chat_code:
-        chat_code = generate_chat_code()
-        db.set_chat_code(chat_id, chat_code)
+    existing_code = db.get_chat_code(chat_id)
+    if existing_code:
+        code = existing_code
+    else:
+        code = generate_chat_code()
+        db.set_chat_code(chat_id, code)
 
-    await update.message.reply_text(f"Код чата: {chat_code}")
+    text = f"""📋 Код чата: <code>{code}</code>
+
+Используйте этот код для импорта настроек чата.
+Чтобы импортировать: <code>!импорт {code}</code>"""
+    await update.message.reply_text(text, parse_mode='HTML')
 
 async def import_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-
-    if not has_access(chat_id, user_id, "4"):
-        await update.message.reply_text("Недостаточно прав")
+    creator = db.get_chat_creator(chat_id)
+    
+    if creator != user_id:
+        await update.message.reply_text("Только создатель может импортировать настройки")
         return
 
     text = update.message.text.strip()
@@ -332,15 +209,22 @@ async def import_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Использование: !импорт [код]")
         return
 
-    source_code = parts[1].upper()
-    source_chat_id = db.find_chat_by_code(source_code)
-
+    source_code = parts[1]
+    source_chat_id = db.get_chat_id_by_code(source_code)
+    
     if not source_chat_id:
-        await update.message.reply_text("Чат с таким кодом не найден")
+        await update.message.reply_text(f"Чат с кодом {source_code} не найден")
         return
 
-    db.import_chat_settings(chat_id, source_chat_id)
-    await update.message.reply_text("Настройки успешно импортированы")
+    welcome = db.get_welcome_message(source_chat_id)
+    rules = db.get_rules(source_chat_id)
+    access_control = db.get_access_control(source_chat_id)
+    
+    db.set_welcome_message(chat_id, welcome)
+    db.set_rules(chat_id, rules)
+    db.set_access_control(chat_id, access_control)
+    
+    await update.message.reply_text("✅ Настройки импортированы")
 
 async def set_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -417,172 +301,113 @@ async def show_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
         5: "Глава альянса"
     }
 
-    rank_emoji = {
-        0: "👤",
-        1: "🛡️",
-        2: "📌",
-        3: "⚜️",
-        4: "👑",
-        5: "🏆"
-    }
-
-    admins_text = "👨‍💼 <b>АДМИНИСТРАТОРЫ ЧАТА</b>\n\n"
-    for user_id, rank in sorted(admins.items(), key=lambda x: x[1], reverse=True):
+    admins_text = "👑 Администраторы чата:\n\n"
+    for user_id, rank in admins.items():
         try:
             user = await context.bot.get_chat_member(chat_id, user_id)
-            rank_name = rank_names.get(rank, "Неизвестно")
-            emoji = rank_emoji.get(rank, "•")
-            user_link = f"<a href='tg://user?id={user_id}'>{user.user.first_name}</a>"
-            admins_text += f"{emoji} <b>{rank_name}</b>\n→ {user_link}\n\n"
+            full_name = user.user.first_name
+            if user.user.last_name:
+                full_name += f" {user.user.last_name}"
+            user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
+            rank_name = rank_names.get(rank, "Неизвестный ранг")
+            admins_text += f"{user_link} — {rank_name}\n"
         except:
             continue
 
-    admins_text += f"📊 <i>Всего администраторов: {len(admins)}</i>"
     await update.message.reply_text(admins_text.strip(), parse_mode='HTML')
 
 async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-    
-    if not has_access(chat_id, user_id, "7"):
+
+    if not has_access(chat_id, user_id, "3.3"):
         await update.message.reply_text("Недостаточно прав")
         return
-    
-    members = db.get_all_members(chat_id)
-    
-    if not members:
-        await update.message.reply_text("В чате нет участников")
-        return
-    
-    mentions = "🔔 <b>СБОР КЛАНА!</b>\n\n"
-    count = 0
+
     try:
-        for member_id in members:
-            try:
-                user = await context.bot.get_chat_member(chat_id, member_id)
-                mention = f"<a href='tg://user?id={member_id}'>{user.user.first_name}</a>"
-                mentions += mention + " "
-                count += 1
-            except:
-                continue
-    except:
-        pass
-    
-    mentions += f"\n\n📢 Собрание объявлено! ({count} участников)"
-    await update.message.reply_text(mentions, parse_mode='HTML')
+        chat_members = await context.bot.get_chat_member_count(chat_id)
+        await update.message.reply_text(
+            f"📢 Сбор клана!\n\nВсего участников: {chat_members}",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка: {str(e)}")
 
 async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-    user_rank = db.get_user_rank(chat_id, user_id)
 
-    if not has_access(chat_id, user_id, "3.2"):
+    if not has_access(chat_id, user_id, "3.4"):
         await update.message.reply_text("Недостаточно прав")
         return
 
     if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'назначить [ранг]'")
+        await update.message.reply_text("Использование: ответьте на сообщение и напишите 'назначить [ранг]'")
         return
 
     text = update.message.text.strip()
     parts = text.split()
     
     if len(parts) < 2:
-        await update.message.reply_text(
-            "Использование: назначить [ранг]\n\n"
-            "Ранги:\n"
-            "0 - Участник\n"
-            "1 - Модератор чата\n"
-            "2 - Наборщик\n"
-            "3 - Заместитель главы клана\n"
-            "4 - Глава клана\n"
-            "5 - Глава альянса"
-        )
+        await update.message.reply_text("Использование: назначить [число от 0 до 5]")
         return
 
     try:
         rank = int(parts[1])
         if rank < 0 or rank > 5:
-            raise ValueError
+            await update.message.reply_text("Ранг должен быть от 0 до 5")
+            return
     except ValueError:
-        await update.message.reply_text("Ранг должен быть числом от 0 до 5")
-        return
-
-    if rank > user_rank:
-        await update.message.reply_text("❌ Вы можете назначить только равный или ниже ранг")
+        await update.message.reply_text("Ранг должен быть числом")
         return
 
     target_user = update.message.reply_to_message.from_user
-    target_rank = db.get_user_rank(chat_id, target_user.id)
-
-    if target_rank > user_rank:
-        await update.message.reply_text("❌ Вы не можете изменить ранг пользователю с более высоким рангом")
-        return
-    
-    rank_names = {
-        0: "Участник",
-        1: "Модератор чата",
-        2: "Наборщик",
-        3: "Заместитель главы клана",
-        4: "Глава клана",
-        5: "Глава альянса"
-    }
-
     db.set_user_rank(chat_id, target_user.id, rank)
-    
-    if rank == 0:
-        await update.message.reply_text(f"Пользователь {target_user.first_name} теперь обычный участник")
-    else:
-        await update.message.reply_text(
-            f"Пользователю {target_user.first_name} назначен ранг: {rank_names[rank]}"
-        )
-
+    await update.message.reply_text(f"Ранг пользователя {target_user.first_name} установлен на {rank}")
 
 async def set_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "2.1"):
-        await update.message.reply_text("Недостаточно прав")
-        return
-
     text = update.message.text.strip()
     parts = text.split(maxsplit=1)
     
     if len(parts) < 2:
-        await update.message.reply_text("Использование: +ник [никнейм]")
+        await update.message.reply_text("Использование: +ник [ник]")
         return
 
     nick = parts[1]
+    if len(nick) > 50:
+        await update.message.reply_text("Ник не может быть длиннее 50 символов")
+        return
+
     db.set_nick(chat_id, user_id, nick)
-    await update.message.reply_text(f"Ваш ник установлен: {nick}")
+    await update.message.reply_text(f"✅ Ваш ник установлен: {nick}")
 
 async def remove_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-
-    if not has_access(chat_id, user_id, "2.1"):
-        await update.message.reply_text("Недостаточно прав")
+    
+    nick = db.get_nick(chat_id, user_id)
+    
+    if not nick:
+        await update.message.reply_text("❌ У вас нет установленного ника")
         return
 
-    nick = db.get_nick(chat_id, user_id)
-    if nick:
-        db.remove_nick(chat_id, user_id)
-        await update.message.reply_text("Ваш ник удален")
-    else:
-        await update.message.reply_text("У вас нет установленного ника")
+    db.remove_nick(chat_id, user_id)
+    await update.message.reply_text("✅ Ваш ник удален")
 
 async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     user_rank = db.get_user_rank(chat_id, user_id)
 
-    if not has_access(chat_id, user_id, "2.2"):
+    if not has_access(chat_id, user_id, "2.1"):
         await update.message.reply_text("Недостаточно прав")
         return
 
     if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '+ник другому [никнейм]'")
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '+ник другому [ник]'")
         return
 
     target_user = update.message.reply_to_message.from_user
@@ -593,15 +418,15 @@ async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     text = update.message.text.strip()
-    parts = text.split(maxsplit=2)
+    parts = text.split(maxsplit=1)
     
-    if len(parts) < 3:
-        await update.message.reply_text("Использование: +ник другому [никнейм]")
+    if len(parts) < 2:
+        await update.message.reply_text("Использование: +ник другому [ник]")
         return
 
-    nick = parts[2]
+    nick = parts[1]
     db.set_nick(chat_id, target_user.id, nick)
-    await update.message.reply_text(f"Ник для пользователя {target_user.first_name} установлен: {nick}")
+    await update.message.reply_text(f"✅ Ник '{nick}' установлен пользователю {target_user.first_name}")
 
 async def remove_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -1119,501 +944,98 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка при размуте: {str(e)}")
 
-async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
-        return
-    
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    link_pattern = r'https?://|www\.'
-    if re.search(link_pattern, update.message.text):
-        required_rank = db.get_link_posting_rank(chat_id)
-        user_rank = get_user_rank(chat_id, user_id)
-        
-        if user_rank < required_rank:
-            db.add_ban(chat_id, user_id)
-            try:
-                await context.bot.ban_chat_member(chat_id, user_id)
-                user_link = f"<a href='tg://user?id={user_id}'>{update.message.from_user.first_name}</a>"
-                await update.message.reply_text(f"{user_link} забанен за постинг ссылки", parse_mode='HTML')
-            except Exception as e:
-                logging.error(f"Ошибка при бане за ссылку: {str(e)}")
-
-async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    required_rank = db.get_award_giving_rank(chat_id)
-    user_rank = get_user_rank(chat_id, user_id)
-    
-    if user_rank < required_rank:
-        await update.message.reply_text("Недостаточно прав для выдачи наград")
-        return
-    
-    text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
-    
-    if len(parts) < 2:
-        await update.message.reply_text(
-            "Использование:\n"
-            "1. Ответьте на сообщение и напишите: !наградить {название награды}\n"
-            "2. Или: !наградить @username {название награды}"
-        )
-        return
-    
-    award_name = parts[1]
-    target_user_id = None
-    
-    if update.message.reply_to_message:
-        target_user_id = update.message.reply_to_message.from_user.id
-    else:
-        if award_name.startswith('@'):
-            parts_award = award_name.split(maxsplit=1)
-            username = parts_award[0][1:]
-            award_name = parts_award[1] if len(parts_award) > 1 else "Награда"
-            
-            try:
-                member = await context.bot.get_chat_member(chat_id, f"@{username}")
-                target_user_id = member.user.id
-            except Exception as e:
-                await update.message.reply_text(f"Не найден пользователь @{username}")
-                return
-    
-    if not target_user_id:
-        await update.message.reply_text("Укажите пользователя или ответьте на сообщение")
-        return
-    
-    db.add_award(chat_id, target_user_id, award_name)
-    
-    try:
-        target_user = await context.bot.get_chat_member(chat_id, target_user_id)
-        user_link = f"<a href='tg://user?id={target_user_id}'>{target_user.user.first_name}</a>"
-        await update.message.reply_text(f"✨ {user_link} получил награду: {award_name}", parse_mode='HTML')
-    except:
-        user_link = f"<a href='tg://user?id={target_user_id}'>Пользователь</a>"
-        await update.message.reply_text(f"✨ {user_link} получил награду: {award_name}", parse_mode='HTML')
-
-async def remove_awards_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Ответьте на сообщение пользователя, чтобы снять награды")
-        return
-    
-    target_user_id = update.message.reply_to_message.from_user.id
-    
-    if target_user_id != user_id:
-        if not has_access(chat_id, user_id, "3"):
-            await update.message.reply_text("Недостаточно прав для снятия наград других пользователей")
-            return
-    
-    db.remove_all_awards(chat_id, target_user_id)
-    
-    try:
-        target_user = await context.bot.get_chat_member(chat_id, target_user_id)
-        user_link = f"<a href='tg://user?id={target_user_id}'>{target_user.user.first_name}</a>"
-        await update.message.reply_text(f"❌ Все награды сняты с {user_link}", parse_mode='HTML')
-    except:
-        await update.message.reply_text("❌ Все награды сняты")
-
-async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    
-    users = db.get_all_users_in_chat(chat_id)
-    
-    if not users:
-        await update.message.reply_text("Нет участников")
-        return
-    
-    rank_names = {
-        0: "Участник",
-        1: "Модератор чата",
-        2: "Наборщик",
-        3: "Заместитель главы клана",
-        4: "Глава клана",
-        5: "Глава альянса"
-    }
-    
-    current_rank = None
-    message = ""
-    
-    for user in users:
-        if user['rank'] != current_rank:
-            if message:
-                message += "\n"
-            current_rank = user['rank']
-            message += f"\n📊 {rank_names.get(current_rank, 'Неизвестный ранг')}:\n"
-        
-        try:
-            member = await context.bot.get_chat_member(chat_id, user['user_id'])
-            user_name = member.user.first_name
-            username = member.user.username
-            user_display = f"<a href='tg://user?id={user['user_id']}'>{user_name}</a>"
-        except Exception as e:
-            logging.error(f"Ошибка при получении информации о пользователе: {e}")
-            user_display = f"@{user['user_id']}"
-        
-        message += f"  • {user_display}"
-        
-        if user['awards']:
-            awards_str = ", ".join(user['awards'])
-            message += f" | {awards_str}"
-        else:
-            message += f" | нет наград"
-        
-        message += "\n"
-    
-    if message:
-        await update.message.reply_text(message, parse_mode='HTML')
-    else:
-        await update.message.reply_text("Нет участников")
-
-def get_section_from_command(command: str) -> str:
-    command_lower = command.lower().strip()
-    
-    if command_lower == "мут":
-        return "1.1"
-    elif command_lower in ["размут", "говори"]:
-        return "1.2"
-    elif command_lower in ["бан", "разбан", "кик"]:
-        return "1.3"
-    elif command_lower in ["варн", "пред"]:
-        return "1.4"
-    elif command_lower in ["снять пред", "снять варн", "снять все преды"]:
-        return "1.5"
-    elif command_lower in ["+ник", "-ник"]:
-        return "2.1"
-    elif command_lower in ["+ник другому", "-ник другому"]:
-        return "2.2"
-    elif command_lower in ["правила", "+правила"]:
-        return "3.1"
-    elif command_lower == "+приветствие":
-        return "3.2"
-    elif command_lower in ["админы"]:
-        return "3.1"
-    elif command_lower in ["кто я", "кто ты"]:
-        return "3.3"
-    elif command_lower in ["назначить"]:
-        return "3.4"
-    elif command_lower in ["команды"]:
-        return "3.7"
-    elif command_lower in ["+маты", "-маты"]:
-        return "4.1"
-    elif command_lower in ["!преды"]:
-        return "4.2"
-    elif command_lower == "ссылки":
-        return "5"
-    elif command_lower == "награды":
-        return "6"
-    elif command_lower == "сбор":
-        return "7"
-    else:
-        return None
-
 async def access_control_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
 
-    if not has_access(chat_id, user_id, "4"):
+    if not has_access(chat_id, user_id, "3.7"):
         await update.message.reply_text("Недостаточно прав")
         return
 
     text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
+    parts = text.split(maxsplit=2)
     
     if len(parts) < 2:
         access_control = db.get_access_control(chat_id)
-        link_posting_rank = db.get_link_posting_rank(chat_id)
-        award_giving_rank = db.get_award_giving_rank(chat_id)
         
-        rank_emoji = {0: "0️⃣", 1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "4️⃣", 5: "5️⃣"}
-        
-        r_1_1 = access_control.get('1.1', 1)
-        r_1_2 = access_control.get('1.2', 1)
-        r_1_3 = access_control.get('1.3', 3)
-        r_1_4 = access_control.get('1.4', 1)
-        r_1_5 = access_control.get('1.5', 1)
-        r_2_1 = access_control.get('2.1', 0)
-        r_2_2 = access_control.get('2.2', 2)
-        r_3_1 = access_control.get('3.1', 3)
-        r_3_2 = access_control.get('3.2', 3)
-        r_3_3 = access_control.get('3.3', 0)
-        r_3_4 = access_control.get('3.4', 3)
-        r_3_7 = access_control.get('3.7', 5)
-        r_4_1 = access_control.get('4.1', 5)
-        r_4_2 = access_control.get('4.2', 5)
-        r_4 = access_control.get('4', 4)
-        
-        help_text = (
-            "⚙️ Изменить доступ к команде: <b>дк {команда} {требуемый ранг}</b>\n\n"
-            "🔴 <b>РАЗДЕЛ 1: Система наказаний</b>\n"
-            f"1.1. 🔇 Мут: <i>мут</i> {rank_emoji[r_1_1]}\n"
-            f"1.2. 🔊 Размут: <i>размут, говори</i> {rank_emoji[r_1_2]}\n"
-            f"1.3. 🔨 Бан и кик: <i>бан, разбан, кик</i> {rank_emoji[r_1_3]}\n"
-            f"1.4. ⚠️ Выдать предупреждение: <i>пред, варн</i> {rank_emoji[r_1_4]}\n"
-            f"1.5. 🔓 Снять предупреждения: <i>снять пред, снять все преды</i> {rank_emoji[r_1_5]}\n\n"
-            "🟡 <b>РАЗДЕЛ 2: Система ников</b>\n"
-            f"2.1. ✏️ Установить себе ник: <i>+ник</i> {rank_emoji[r_2_1]}\n"
-            f"2.2. 🗑️ Удалить себе ник: <i>-ник</i> {rank_emoji[r_2_1]}\n"
-            f"2.3. 📝 Установить ник участнику: <i>+ник другому</i> {rank_emoji[r_2_2]}\n"
-            f"2.4. ❌ Удалить ник участнику: <i>-ник другому</i> {rank_emoji[r_2_2]}\n\n"
-            "🟢 <b>РАЗДЕЛ 3: Информирование</b>\n"
-            f"3.1. 📋 Узнать правила: <i>правила</i> {rank_emoji[r_3_1]}\n"
-            f"3.2. ✍️ Изменить правила: <i>+правила</i> {rank_emoji[r_3_1]}\n"
-            f"3.3. 👋 Сообщение приветствия: <i>приветствие</i> {rank_emoji[r_3_2]}\n"
-            f"3.4. 📢 Изменить приветствие: <i>+приветствие</i> {rank_emoji[r_3_2]}\n"
-            f"3.5. 👨‍💼 Список администраторов: <i>админы</i> {rank_emoji[r_3_1]}\n"
-            f"3.6. 👤 Просмотр профиля: <i>кто я, кто ты</i> {rank_emoji[r_3_3]}\n"
-            f"3.7. 📚 Список команд: <i>команды</i> {rank_emoji[r_3_7]}\n\n"
-            "🔵 <b>РАЗДЕЛ 4: Администраторские</b>\n"
-            f"4.1. 🔰 Фильтр мата: <i>+маты, -маты</i> {rank_emoji[r_4_1]}\n"
-            f"4.2. 📊 Макс. предупреждений: <i>!преды [число]</i> {rank_emoji[r_4_2]}\n"
-            f"4.3. 🛡️ Доступ к командам: <i>дк</i> {rank_emoji[r_4]}\n"
-            f"4.4. 🔗 Разрешить ссылки: <i>дк ссылки [ранг]</i> {rank_emoji[link_posting_rank]}\n"
-            f"4.5. 🔔 Сбор клана: <i>сбор</i> {rank_emoji[access_control.get('7', 1)]}\n"
-            f"4.6. 📊 Назначить ранг: <i>назначить</i> {rank_emoji[r_3_4]}\n\n"
-            "🟣 <b>РАЗДЕЛ 5: Система вознаграждения</b>\n"
-            f"5.1. 🏆 Выдача наград: <i>!наградить {{награда}}</i> {rank_emoji[award_giving_rank]}\n"
-            f"5.2. ✂️ Снятие наград: <i>!снять награды</i> {rank_emoji[award_giving_rank]}\n"
-            "5.3. 🎖️ Посмотреть награды: <i>Наградной список</i> 0️⃣\n"
-            f"5.4. 🎯 Изменить ранг награждения: <i>дк награды [ранг]</i> {rank_emoji[r_4]}"
-        )
-        
-        await update.message.reply_text(help_text, parse_mode='HTML')
-        return
+        info = """<b>⚙️ УПРАВЛЕНИЕ ПРАВАМИ ДОСТУПА</b>
 
-    command_part = parts[1]
-    cmd_parts = command_part.rsplit(maxsplit=1)
-    
-    if len(cmd_parts) < 2:
-        await update.message.reply_text("Использование: дк {команда} {требуемый ранг}")
+Текущие требуемые ранги для команд:
+"""
+        for section, rank in sorted(access_control.items()):
+            rank_names = {0: "Участник", 1: "Модератор", 2: "Наборщик", 3: "Замести", 4: "Глава", 5: "Альянс"}
+            info += f"\n{section}: {rank_names.get(rank, rank)}"
+        
+        info += "\n\nИспользование: <code>дк [раздел] [ранг]</code>"
+        
+        await update.message.reply_text(info, parse_mode='HTML')
         return
     
-    command_name = cmd_parts[0]
+    section = parts[1]
     try:
-        rank = int(cmd_parts[1])
-        if rank < 0 or rank > 5:
-            raise ValueError
-    except ValueError:
+        rank = int(parts[2])
+    except (ValueError, IndexError):
         await update.message.reply_text("Ранг должен быть числом от 0 до 5")
         return
-
-    section = get_section_from_command(command_name)
-    if section is None:
-        await update.message.reply_text(f"Неизвестная команда: {command_name}")
+    
+    if rank < 0 or rank > 5:
+        await update.message.reply_text("Ранг должен быть от 0 до 5")
         return
+    
+    db.set_access_control_section(chat_id, section, rank)
+    await update.message.reply_text(f"✅ Раздел {section} теперь требует ранг {rank}")
 
-    if section == "5":
-        db.set_link_posting_rank(chat_id, rank)
-    elif section == "6":
-        db.set_award_giving_rank(chat_id, rank)
-    else:
-        access_control = db.get_access_control(chat_id)
-        access_control[section] = rank
-        db.set_access_control(chat_id, access_control)
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    commands_text = """📚 СПРАВКА ПО КОМАНДАМ:
 
-    section_names = {
-        "1.1": "Мут и снятие мута",
-        "1.2": "Бан и снятие бана", 
-        "1.3": "Предупреждения",
-        "2.1": "Ники себе",
-        "2.2": "Ники другим",
-        "3.1": "Правила",
-        "3.2": "Приветствие",
-        "4": "Доступ к команде ДК",
-        "5": "Постинг ссылок",
-        "6": "Выдача наград"
-    }
+<b>👤 Ники:</b>
+<code>+ник [ник]</code> - установить свой ник
+<code>-ник</code> - удалить свой ник
+<code>ники</code> - список всех ников
 
-    rank_names = {
-        0: "Участник",
-        1: "Модератор чата",
-        2: "Наборщик", 
-        3: "Заместитель главы клана",
-        4: "Глава клана",
-        5: "Глава альянса"
-    }
+<b>👑 Администрирование:</b>
+<code>назначить [ранг]</code> - назначить ранг (ответом)
+<code>дк [раздел] [ранг]</code> - управление доступом
 
-    await update.message.reply_text(
-        f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
-    )
+<b>⚠️ Наказания:</b>
+<code>варн [причина]</code> - дать предупреждение (ответом)
+<code>преды</code> - показать свои предупреждения
+<code>снять пред</code> - снять последнее предупреждение (ответом)
+<code>мут [время] [с/м]</code> - замутить (ответом)
+<code>размут</code> - размутить (ответом)
+<code>бан [причина]</code> - забанить (ответом)
+<code>разбан</code> - разбанить (ответом)
+<code>кик</code> - кикнуть (ответом)
 
-def display_user_profile(chat_id: int, user_id: int, user_name: str, user_lastname: Optional[str] = None) -> str:
-    """Получить текст профиля пользователя"""
-    try:
-        rank = db.get_user_rank(chat_id, user_id)
-        nick = db.get_nick(chat_id, user_id)
-        warnings = db.get_warns(chat_id, user_id) or []
-        awards = db.get_user_awards(chat_id, user_id) or []
-        is_banned = db.is_banned(chat_id, user_id)
-        mute_info = db.get_mute_time(chat_id, user_id)
-        is_muted = mute_info is not None
-        max_warns = db.get_max_warns(chat_id)
-        
-        rank_names = {
-            0: "👤 Участник",
-            1: "🛡️ Модератор чата",
-            2: "📋 Наборщик", 
-            3: "⚔️ Заместитель главы клана",
-            4: "👑 Глава клана",
-            5: "🔱 Глава альянса"
-        }
-        
-        # Формируем полное имя
-        full_name = user_name
-        if user_lastname:
-            full_name = f"{user_name} {user_lastname}"
-        
-        # Формируем текст профиля
-        user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
-        profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
-        profile_text += f"<b>Имя:</b> {user_link}\n"
-        
-        if nick:
-            profile_text += f"<b>Ник:</b> {nick}\n"
-        
-        profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')} [{rank}]\n"
-        
-        if warnings:
-            profile_text += f"<b>Предупреждения:</b> {len(warnings)}/{max_warns}\n"
-        else:
-            profile_text += f"<b>Предупреждения:</b> 0/{max_warns}\n"
-        
-        if is_banned:
-            profile_text += "🚫 <b>Статус:</b> <u>Забанен</u>\n"
-        elif is_muted:
-            profile_text += "🔇 <b>Статус:</b> <u>Заммучен</u>\n"
-        else:
-            profile_text += "✅ <b>Статус:</b> <u>Активен</u>\n"
-        
-        if awards and len(awards) > 0:
-            profile_text += f"\n<b>🏆 Награды ({len(awards)}):</b>\n"
-            for award in awards:
-                profile_text += f"  • {award}\n"
-        
-        return profile_text
-    except Exception as e:
-        logging.error(f"Error building profile: {str(e)}")
-        return f"❌ Ошибка при загрузке профиля: {str(e)}"
+<b>📋 Правила:</b>
+<code>+правила [текст]</code> - установить правила
+<code>правила</code> - показать правила
+<code>+приветствие [текст]</code> - установить приветствие
+<code>приветствие</code> - показать приветствие
 
-async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показать профиль текущего пользователя"""
-    try:
-        user = update.message.from_user
-        chat_id = update.message.chat_id
-        
-        profile_text = display_user_profile(chat_id, user.id, user.first_name, user.last_name)
-        await update.message.reply_text(profile_text, parse_mode='HTML')
-    except Exception as e:
-        logging.error(f"who_am_i error: {str(e)}")
-        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+<b>ℹ️ Информация:</b>
+<code>админы</code> - список администраторов
+<code>сбор</code> - упоминание всех участников
+<code>помощь</code> - эта справка"""
+
+    await update.message.reply_text(commands_text, parse_mode='HTML')
+
+async def commands_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_command(update, context)
 
 async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показать профиль другого пользователя (по reply или mention)"""
-    try:
-        chat_id = update.message.chat_id
-        target_user = None
-        target_user_id = None
-        
-        # 1. Проверяем reply
-        if update.message.reply_to_message:
-            target_user = update.message.reply_to_message.from_user
-            target_user_id = target_user.id
-        # 2. Проверяем text_mention entities
-        elif update.message.entities:
-            for entity in update.message.entities:
-                if entity.type == 'text_mention':
-                    target_user = entity.user
-                    target_user_id = target_user.id
-                    break
-        
-        if not target_user_id:
-            await update.message.reply_text("❌ Ответьте на сообщение пользователя или упомяните его, чтобы посмотреть профиль.")
-            return
-        
-        profile_text = display_user_profile(chat_id, target_user_id, target_user.first_name, target_user.last_name)
-        await update.message.reply_text(profile_text, parse_mode='HTML')
-    except Exception as e:
-        logging.error(f"who_is_this error: {str(e)}")
-        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
-
-async def toggle_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE, enable: bool):
-    """Включить или отключить фильтр для всего чата"""
-    chat_id = update.message.chat_id
-    creator = db.get_chat_creator(chat_id)
-    
-    if creator != update.message.from_user.id:
-        await update.message.reply_text("Только создатель может менять фильтр сквернословия")
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Ответьте на сообщение пользователя")
         return
     
-    db.set_profanity_filter_enabled(chat_id, enable)
-    status = "включен ✅" if enable else "отключен ❌"
-    await update.message.reply_text(f"Фильтр сквернословия для чата {status}")
+    target_user = update.message.reply_to_message.from_user
+    user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+    await update.message.reply_text(f"Это {user_link}", parse_mode='HTML')
 
-async def enable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await toggle_profanity_filter(update, context, False)
-
-async def disable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await toggle_profanity_filter(update, context, True)
-
-async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Установить максимальное количество предупреждений (только ранг 5)"""
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    user_rank = db.get_user_rank(chat_id, user_id)
-    
-    if user_rank != 5:
-        await update.message.reply_text("❌ Только ранг 5 может менять максимум предупреждений")
-        return
-    
-    try:
-        args = update.message.text.split()
-        if len(args) < 2:
-            await update.message.reply_text("❌ Использование: !преды {число}")
-            return
-        
-        max_warns = int(args[1])
-        if max_warns < 1:
-            await update.message.reply_text("❌ Число должно быть больше 0")
-            return
-        
-        db.set_max_warns(chat_id, max_warns)
-        await update.message.reply_text(f"✅ Максимум предупреждений установлен на {max_warns}")
-    except ValueError:
-        await update.message.reply_text("❌ Введите корректное число")
-
-async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Проверить сообщение на мат и выдать предупреждение если нужно"""
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    filter_enabled = db.is_profanity_filter_enabled(chat_id)
-    
-    if filter_enabled and contains_profanity(update.message.text):
-        user = update.message.from_user
-        await update.message.delete()
-        
-        db.add_warn(chat_id, user_id, chat_id, "Использование нецензурной лексики")
-        
-        warns = db.get_warns(chat_id, user_id)
-        warn_count = len(warns) if warns else 0
-        max_warns = db.get_max_warns(chat_id)
-        
-        if warn_count >= max_warns:
-            db.add_ban(chat_id, user_id)
-            await context.bot.send_message(
-                chat_id,
-                f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count}+ предупреждения)"
-            )
-        else:
-            user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
-            await context.bot.send_message(
-                chat_id,
-                f"⚠️ {user_link} предупреждение за мат ({warn_count}/{max_warns})",
-                parse_mode='HTML'
-            )
+async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    user_link = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
+    await update.message.reply_text(f"Это ты: {user_link}", parse_mode='HTML')
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
@@ -1674,6 +1096,170 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.reply_text(capabilities_text, parse_mode='HTML', reply_markup=reply_markup)
 
+async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    profanity_enabled = db.is_profanity_filter_enabled(chat_id)
+    
+    if not profanity_enabled:
+        return
+    
+    text = update.message.text.lower()
+    
+    if contains_profanity(text):
+        user = update.message.from_user
+        user_id = user.id
+        
+        await update.message.delete()
+        
+        db.add_warn(chat_id, user_id, chat_id, "Использование нецензурной лексики")
+        
+        warns = db.get_warns(chat_id, user_id)
+        warn_count = len(warns) if warns else 0
+        max_warns = db.get_max_warns(chat_id)
+        
+        if warn_count >= max_warns:
+            db.add_ban(chat_id, user_id)
+            await context.bot.send_message(
+                chat_id,
+                f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count}+ предупреждения)"
+            )
+        else:
+            user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
+            await context.bot.send_message(
+                chat_id,
+                f"⚠️ {user_link} предупреждение за мат ({warn_count}/{max_warns})",
+                parse_mode='HTML'
+            )
+
+async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    user_rank = db.get_user_rank(chat_id, user_id)
+    
+    link_posting_rank = db.get_link_posting_rank(chat_id)
+    
+    if user_rank < link_posting_rank:
+        text = update.message.text
+        link_patterns = [
+            r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
+            r'(?:www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            r't\.me/\S+',
+            r'@\w+'
+        ]
+        
+        for pattern in link_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                await update.message.delete()
+                return
+
+async def enable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "3.8"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    db.enable_profanity_filter(chat_id)
+    await update.message.reply_text("✅ Фильтр мата включен")
+
+async def disable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "3.8"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    db.disable_profanity_filter(chat_id)
+    await update.message.reply_text("✅ Фильтр мата отключен")
+
+async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "4"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение и напишите '!наградить [награда]'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    reward = parts[1] if len(parts) > 1 else "Спасибо"
+
+    db.add_award(chat_id, target_user.id, reward)
+    await update.message.reply_text(f"✅ {target_user.first_name} награжден: {reward}")
+
+async def remove_awards_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "4"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение и напишите '!снять награды'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+    db.remove_awards(chat_id, target_user.id)
+    await update.message.reply_text(f"✅ Награды {target_user.first_name} удалены")
+
+async def show_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    awards = db.get_all_awards(chat_id)
+
+    if not awards:
+        await update.message.reply_text("📊 Нет выданных наград")
+        return
+
+    awards_text = "🏆 Награждённые участники:\n\n"
+    for user_id, reward in awards.items():
+        try:
+            user = await context.bot.get_chat_member(chat_id, user_id)
+            full_name = user.user.first_name
+            if user.user.last_name:
+                full_name += f" {user.user.last_name}"
+            user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
+            awards_text += f"⭐ {user_link} — {reward}\n"
+        except:
+            continue
+
+    await update.message.reply_text(awards_text.strip(), parse_mode='HTML')
+
+async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "3.7"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    if len(parts) < 2:
+        max_warns = db.get_max_warns(chat_id)
+        await update.message.reply_text(f"Текущий лимит предупреждений: {max_warns}\nИспользование: !преды [число]")
+        return
+
+    try:
+        max_warns = int(parts[1])
+        if max_warns < 1:
+            await update.message.reply_text("Лимит должен быть не менее 1")
+            return
+    except ValueError:
+        await update.message.reply_text("Лимит должен быть числом")
+        return
+
+    db.set_max_warns(chat_id, max_warns)
+    await update.message.reply_text(f"✅ Лимит предупреждений установлен: {max_warns}")
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1704,8 +1290,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^правила$'), show_rules))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+правила'), set_rules))
     
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^преды$'), show_warns))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^снять все преды$'), remove_all_warns))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:снять все преды|снять все варны)'), remove_all_warns))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:снять пред|снять варн)'), remove_warn))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:варн|пред)(?:\s|$)'), warn_user))
     
