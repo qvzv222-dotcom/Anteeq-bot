@@ -694,6 +694,13 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
         return
 
+    last_warn = db.get_last_warn_details(chat_id, target_user.id)
+    if last_warn:
+        giver_rank = db.get_user_rank(chat_id, last_warn['from_user_id'])
+        if user_rank <= giver_rank:
+            await update.message.reply_text("❌ Вы не можете снять предупреждение, выданное модератором равного или выше ранга")
+            return
+
     db.remove_last_warn(chat_id, target_user.id)
     warn_count = db.get_warn_count(chat_id, target_user.id)
     max_warns = db.get_max_warns(chat_id)
@@ -728,6 +735,11 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not warns:
         user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
+        return
+
+    highest_warn_giver_rank = db.get_highest_warn_giver_rank(chat_id, target_user.id)
+    if user_rank <= highest_warn_giver_rank:
+        await update.message.reply_text("❌ Вы не можете снять предупреждения, выданные модератором равного или выше ранга")
         return
 
     db.remove_all_warns(chat_id, target_user.id)

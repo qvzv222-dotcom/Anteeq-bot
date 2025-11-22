@@ -840,3 +840,42 @@ def remove_all_warns(chat_id: int, user_id: int):
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
+
+def get_last_warn_details(chat_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('''
+            SELECT from_user_id, reason, warn_date
+            FROM warns
+            WHERE chat_id = %s AND user_id = %s
+            ORDER BY warn_date DESC
+            LIMIT 1
+        ''', (chat_id, user_id))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return dict(result) if result else None
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return None
+
+def get_highest_warn_giver_rank(chat_id: int, user_id: int) -> int:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT from_user_id FROM warns
+            WHERE chat_id = %s AND user_id = %s
+        ''', (chat_id, user_id))
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        max_rank = 0
+        for row in results:
+            from_user_id = row[0]
+            rank = get_user_rank(chat_id, from_user_id)
+            max_rank = max(max_rank, rank)
+        return max_rank
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return 0
