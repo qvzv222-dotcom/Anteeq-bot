@@ -1644,6 +1644,9 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.set_user_rank(chat_id, user.id, 5)
 
         welcome_text = db.get_welcome_message(chat_id)
+        chat_title = update.message.chat.title or "Чат"
+        welcome_text = welcome_text.replace("[***]", chat_title)
+        
         nick = db.get_nick(chat_id, user.id)
         if nick:
             welcome_text += f"\nТвой ник: {nick}"
