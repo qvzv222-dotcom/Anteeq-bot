@@ -356,7 +356,7 @@ async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '+ранг [ранг]'")
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'назначить [ранг]'")
         return
 
     text = update.message.text.strip()
@@ -364,7 +364,7 @@ async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if len(parts) < 2:
         await update.message.reply_text(
-            "Использование: +ранг [ранг]\n\n"
+            "Использование: назначить [ранг]\n\n"
             "Ранги:\n"
             "0 - Участник\n"
             "1 - Модератор чата\n"
@@ -1331,7 +1331,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^админы$'), show_admins))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^сбор$'), gather_members))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ранг'), set_rank))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^назначить\s+'), set_rank))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+ник другому\s+'), set_nick_other))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-ник другому$'), remove_nick_other))
