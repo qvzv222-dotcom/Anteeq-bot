@@ -3,8 +3,6 @@ import logging
 import random
 import string
 import re
-import subprocess
-import sys
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -1223,45 +1221,16 @@ def setup_handlers(application):
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
-def start_health_check_server():
-    """Start health check server in separate process for UptimeBot monitoring"""
-    try:
-        # Start health_check.py in a separate process to avoid import conflicts
-        process = subprocess.Popen(
-            [sys.executable, "health_check.py"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True
-        )
-        print("✅ Сервер мониторинга запущен на http://0.0.0.0:8000/health")
-        return process
-    except Exception as e:
-        print(f"⚠️ Ошибка при запуске сервера мониторинга: {e}")
-        return None
-
 def main():
     print("Инициализация базы данных...")
     db.init_database()
-    
-    # Start health check server for UptimeBot
-    health_process = start_health_check_server()
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
     print("Бот запущен...")
     print("Добавьте бота в группу и дайте ему права администратора!")
-    
-    try:
-        application.run_polling()
-    finally:
-        # Cleanup health check process on exit
-        if health_process:
-            try:
-                health_process.terminate()
-                health_process.wait(timeout=5)
-            except:
-                health_process.kill()
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
