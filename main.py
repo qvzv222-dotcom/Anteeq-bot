@@ -1591,7 +1591,10 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(welcome_text)
 
-async def my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.my_chat_member:
+        return
+    
     chat_id = update.my_chat_member.chat.id
     new_status = update.my_chat_member.new_chat_member.status
     
@@ -1637,12 +1640,17 @@ async def my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Используйте <code>помощь</code> или <code>команды</code> для полной информации!"""
             
-            await context.bot.send_message(chat_id, capabilities_text, parse_mode='HTML')
+            try:
+                await context.bot.send_message(chat_id, capabilities_text, parse_mode='HTML')
+            except Exception as e:
+                logging.error(f"Ошибка при отправке сообщения о возможностях бота: {e}")
 
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CallbackQueryHandler(lambda update, context: None))
-    application.add_handler(MessageHandler(filters.StatusUpdate.MY_CHAT_MEMBER, my_chat_member))
+    
+    from telegram.ext import TypeHandler
+    application.add_handler(TypeHandler(Update, handle_my_chat_member), group=-1)
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
@@ -1687,8 +1695,6 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!наградить'), reward_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!снять награды'), remove_awards_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^Наградной список$'), show_participants))
-
-    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
