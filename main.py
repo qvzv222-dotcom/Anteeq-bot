@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from typing import Optional
 import threading
 import time
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import quote
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -1189,6 +1192,58 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
+async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    if len(parts) < 2 or not parts[1].strip():
+        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск Python программирование")
+        return
+    
+    query = parts[1]
+    await update.message.reply_text(f"🔍 Ищу в интернете: <b>{query}</b>...", parse_mode='HTML')
+    
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        search_url = f"https://lite.duckduckgo.com/lite?q={quote(query)}"
+        response = requests.get(search_url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        results = []
+        
+        for result in soup.find_all('tr')[3:]:
+            cols = result.find_all('td')
+            if len(cols) >= 2:
+                link_elem = cols[0].find('a')
+                if link_elem:
+                    title = link_elem.get_text(strip=True)
+                    url = link_elem.get('href', '')
+                    snippet = cols[1].get_text(strip=True) if len(cols) > 1 else ''
+                    
+                    if title and url and not url.startswith('http://lite.duckduckgo'):
+                        results.append({'title': title, 'url': url, 'snippet': snippet})
+                        if len(results) >= 3:
+                            break
+        
+        if not results:
+            await update.message.reply_text("❌ Результатов не найдено")
+            return
+        
+        response_text = "🌐 <b>Результаты поиска:</b>\n\n"
+        for i, result in enumerate(results, 1):
+            response_text += f"<b>{i}. {result['title']}</b>\n"
+            if result['snippet']:
+                snippet = result['snippet'][:100] + "..." if len(result['snippet']) > 100 else result['snippet']
+                response_text += f"<i>{snippet}</i>\n"
+            response_text += f"<a href='{result['url']}'>🔗 Ссылка</a>\n\n"
+        
+        await update.message.reply_text(response_text, parse_mode='HTML')
+        
+    except Exception as e:
+        logging.error(f"Web search error: {str(e)}")
+        await update.message.reply_text(f"❌ Ошибка поиска: {str(e)}")
+
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1220,6 +1275,8 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^поиск\s+'), web_search))
+    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
