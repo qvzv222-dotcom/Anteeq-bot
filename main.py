@@ -6,15 +6,17 @@ import re
 from datetime import datetime, timedelta
 from typing import Optional
 import threading
+import time
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
+from flask import Flask
+import requests
 
 import db
-from keep_alive import keep_alive, ping_self
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1271,6 +1273,29 @@ def setup_handlers(application):
     
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
+
+# Keep-alive сервер
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = threading.Thread(target=run_flask, daemon=True)
+    t.start()
+
+# Функция для самопинга
+def ping_self():
+    while True:
+        try:
+            requests.get("https://ANTEEQ-BOT.qvzv222.repl.co", timeout=10)
+        except Exception as e:
+            pass
+        time.sleep(300)  # 5 минут
 
 def main():
     print("Инициализация базы данных...")
