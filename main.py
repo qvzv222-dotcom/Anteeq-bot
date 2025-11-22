@@ -1204,27 +1204,32 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔍 Ищу в интернете: <b>{query}</b>...", parse_mode='HTML')
     
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        search_url = f"https://lite.duckduckgo.com/lite?q={quote(query)}"
+        headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0'}
+        
+        search_url = f"https://api.bing.com/qsonrss.aspx?q={quote(query)}&count=3"
         response = requests.get(search_url, headers=headers, timeout=10)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        results = []
+        soup = BeautifulSoup(response.text, 'xml')
+        items = soup.find_all('item')
         
-        for result in soup.find_all('tr')[3:]:
-            cols = result.find_all('td')
-            if len(cols) >= 2:
-                link_elem = cols[0].find('a')
-                if link_elem:
-                    title = link_elem.get_text(strip=True)
-                    url = link_elem.get('href', '')
-                    snippet = cols[1].get_text(strip=True) if len(cols) > 1 else ''
-                    
-                    if title and url and not url.startswith('http://lite.duckduckgo'):
-                        results.append({'title': title, 'url': url, 'snippet': snippet})
-                        if len(results) >= 3:
-                            break
+        if not items:
+            await update.message.reply_text("❌ Результатов не найдено")
+            return
+        
+        results = []
+        for item in items[:3]:
+            title_tag = item.find('title')
+            link_tag = item.find('link')
+            desc_tag = item.find('description')
+            
+            if title_tag and link_tag:
+                title = title_tag.get_text(strip=True)
+                url = link_tag.get_text(strip=True)
+                snippet = desc_tag.get_text(strip=True) if desc_tag else ''
+                
+                if title and url:
+                    results.append({'title': title, 'url': url, 'snippet': snippet})
         
         if not results:
             await update.message.reply_text("❌ Результатов не найдено")
@@ -1234,7 +1239,7 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, result in enumerate(results, 1):
             response_text += f"<b>{i}. {result['title']}</b>\n"
             if result['snippet']:
-                snippet = result['snippet'][:100] + "..." if len(result['snippet']) > 100 else result['snippet']
+                snippet = result['snippet'][:80].replace('<', '').replace('>', '') + "..." if len(result['snippet']) > 80 else result['snippet'].replace('<', '').replace('>', '')
                 response_text += f"<i>{snippet}</i>\n"
             response_text += f"<a href='{result['url']}'>🔗 Ссылка</a>\n\n"
         
