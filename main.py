@@ -1119,6 +1119,8 @@ def get_section_from_command(command: str) -> str:
         return "1.4"
     elif command_lower in ["снять пред", "снять варн"]:
         return "1.5"
+    elif command_lower in ["снять все преды"]:
+        return "1.6"
     elif command_lower in ["+ник", "-ник"]:
         return "2.1"
     elif command_lower in ["+ник другому", "-ник другому"]:
@@ -1127,8 +1129,16 @@ def get_section_from_command(command: str) -> str:
         return "3.1"
     elif command_lower == "+приветствие":
         return "3.2"
-    elif command_lower == "админы":
+    elif command_lower in ["админы"]:
         return "3.1"
+    elif command_lower in ["кто я", "кто ты"]:
+        return "3.3"
+    elif command_lower in ["назначить"]:
+        return "3.4"
+    elif command_lower in ["+маты", "-маты"]:
+        return "4.1"
+    elif command_lower in ["!преды"]:
+        return "4.2"
     elif command_lower == "ссылки":
         return "5"
     elif command_lower == "награды":
@@ -1161,10 +1171,15 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         r_1_3 = access_control.get('1.3', 3)
         r_1_4 = access_control.get('1.4', 1)
         r_1_5 = access_control.get('1.5', 1)
+        r_1_6 = access_control.get('1.6', 3)
         r_2_1 = access_control.get('2.1', 0)
         r_2_2 = access_control.get('2.2', 2)
         r_3_1 = access_control.get('3.1', 3)
         r_3_2 = access_control.get('3.2', 3)
+        r_3_3 = access_control.get('3.3', 0)
+        r_3_4 = access_control.get('3.4', 3)
+        r_4_1 = access_control.get('4.1', 5)
+        r_4_2 = access_control.get('4.2', 5)
         r_4 = access_control.get('4', 4)
         
         help_text = (
@@ -1174,7 +1189,8 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             f"1.2. 🔊 Размут: <i>размут, говори</i> {rank_emoji[r_1_2]}\n"
             f"1.3. 🔨 Бан и кик: <i>бан, разбан, кик</i> {rank_emoji[r_1_3]}\n"
             f"1.4. ⚠️ Выдать предупреждение: <i>пред, варн</i> {rank_emoji[r_1_4]}\n"
-            f"1.5. 🔓 Снять предупреждение: <i>снять пред, снять варн</i> {rank_emoji[r_1_5]}\n\n"
+            f"1.5. 🔓 Снять предупреждение: <i>снять пред, снять варн</i> {rank_emoji[r_1_5]}\n"
+            f"1.6. 🗑️ Снять все преды: <i>снять все преды</i> {rank_emoji[r_1_6]}\n\n"
             "🟡 <b>РАЗДЕЛ 2: Система ников</b>\n"
             f"2.1. ✏️ Установить себе ник: <i>+ник</i> {rank_emoji[r_2_1]}\n"
             f"2.2. 🗑️ Удалить себе ник: <i>-ник</i> {rank_emoji[r_2_1]}\n"
@@ -1185,11 +1201,15 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             f"3.2. ✍️ Изменить правила: <i>+правила</i> {rank_emoji[r_3_1]}\n"
             f"3.3. 👋 Сообщение приветствия: <i>приветствие</i> {rank_emoji[r_3_2]}\n"
             f"3.4. 📢 Изменить приветствие: <i>+приветствие</i> {rank_emoji[r_3_2]}\n"
-            f"3.5. 👨‍💼 Список администраторов: <i>админы</i> {rank_emoji[r_3_1]}\n\n"
+            f"3.5. 👨‍💼 Список администраторов: <i>админы</i> {rank_emoji[r_3_1]}\n"
+            f"3.6. 👤 Просмотр профиля: <i>кто я, кто ты</i> {rank_emoji[r_3_3]}\n"
+            f"3.7. 📊 Назначить ранг: <i>назначить</i> {rank_emoji[r_3_4]}\n\n"
             "🔵 <b>РАЗДЕЛ 4: Администраторские</b>\n"
-            f"4.1. 🛡️ Доступ к командам: <i>дк</i> {rank_emoji[r_4]}\n"
-            f"4.2. 🔗 Разрешить ссылки: <i>дк ссылки [ранг]</i> {rank_emoji[link_posting_rank]}\n"
-            f"4.3. 🔔 Сбор клана: <i>сбор</i> {rank_emoji[access_control.get('7', 1)]}\n\n"
+            f"4.1. 🔰 Фильтр мата: <i>+маты, -маты</i> {rank_emoji[r_4_1]}\n"
+            f"4.2. 📊 Макс. предупреждений: <i>!преды [число]</i> {rank_emoji[r_4_2]}\n"
+            f"4.3. 🛡️ Доступ к командам: <i>дк</i> {rank_emoji[r_4]}\n"
+            f"4.4. 🔗 Разрешить ссылки: <i>дк ссылки [ранг]</i> {rank_emoji[link_posting_rank]}\n"
+            f"4.5. 🔔 Сбор клана: <i>сбор</i> {rank_emoji[access_control.get('7', 1)]}\n\n"
             "🟣 <b>РАЗДЕЛ 5: Система вознаграждения</b>\n"
             f"5.1. 🏆 Выдача наград: <i>!наградить {{награда}}</i> {rank_emoji[award_giving_rank]}\n"
             f"5.2. ✂️ Снятие наград: <i>!снять награды</i> {rank_emoji[award_giving_rank]}\n"
