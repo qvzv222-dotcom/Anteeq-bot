@@ -1311,18 +1311,6 @@ async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TY
     db.set_max_warns(chat_id, max_warns)
     await update.message.reply_text(f"✅ Лимит предупреждений установлен: {max_warns}")
 
-async def test_dm_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global MEARLOCK_USER_ID
-    if not MEARLOCK_USER_ID:
-        await update.message.reply_text("❌ User ID mearlock не найден")
-        return
-    
-    try:
-        await context.bot.send_message(MEARLOCK_USER_ID, f"🧪 Тестовое сообщение #{random.randint(100, 999)}: Бот работает отлично!")
-        await update.message.reply_text("✅ Тестовое сообщение отправлено mearlock")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
-
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1373,7 +1361,6 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!преды'), set_max_warns_command))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!тест dm'), test_dm_command))
 
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
