@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 import threading
 import time
-from ddgs import DDGS
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -1190,63 +1189,6 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
-async def perform_search(query: str) -> str:
-    """Выполняет поиск через DuckDuckGo и возвращает результаты"""
-    try:
-        ddgs = DDGS()
-        results = ddgs.text(query, max_results=3)
-        
-        if not results:
-            return "❌ Результатов не найдено. Попробуйте другой запрос."
-        
-        response_text = "🌐 <b>Результаты поиска:</b>\n\n"
-        
-        for i, result in enumerate(results, 1):
-            title = result.get('title', 'Без названия')
-            snippet = result.get('body', '')[:100] + "..." if len(result.get('body', '')) > 100 else result.get('body', '')
-            url = result.get('href', '')
-            
-            response_text += f"<b>{i}. {title}</b>\n"
-            if snippet:
-                response_text += f"<i>{snippet}</i>\n"
-            if url:
-                response_text += f"<a href='{url}'>🔗 Ссылка</a>\n\n"
-            else:
-                response_text += "\n"
-        
-        return response_text
-        
-    except Exception as e:
-        logging.error(f"Web search error: {str(e)}")
-        return f"❌ Ошибка поиска: {str(e)}"
-
-async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /поиск с аргументами"""
-    if not context.args:
-        await update.message.reply_text("Использование: /поиск {запрос}\nПример: /поиск Python")
-        return
-    
-    query = ' '.join(context.args)
-    await update.message.reply_text(f"🔍 Ищу: <b>{query}</b>...", parse_mode='HTML')
-    
-    result = await perform_search(query)
-    await update.message.reply_text(result, parse_mode='HTML')
-
-async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик текстовой команды 'поиск {запрос}'"""
-    text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
-    
-    if len(parts) < 2 or not parts[1].strip():
-        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск Python")
-        return
-    
-    query = parts[1]
-    await update.message.reply_text(f"🔍 Ищу: <b>{query}</b>...", parse_mode='HTML')
-    
-    result = await perform_search(query)
-    await update.message.reply_text(result, parse_mode='HTML')
-
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1278,9 +1220,6 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
-    application.add_handler(CommandHandler("поиск", search_command))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^поиск\s+'), web_search))
-    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
