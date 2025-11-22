@@ -5,6 +5,7 @@ import string
 import re
 from datetime import datetime, timedelta
 from typing import Optional
+import threading
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -13,6 +14,7 @@ from telegram.ext import (
 )
 
 import db
+from keep_alive import keep_alive, ping_self
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1273,6 +1275,13 @@ def setup_handlers(application):
 def main():
     print("Инициализация базы данных...")
     db.init_database()
+    
+    print("Запуск keep-alive сервера...")
+    keep_alive()
+    
+    print("Запуск самопинга...")
+    ping_thread = threading.Thread(target=ping_self, daemon=True)
+    ping_thread.start()
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
