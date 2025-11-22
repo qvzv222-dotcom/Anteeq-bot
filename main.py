@@ -378,6 +378,8 @@ async def remove_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     welcome_text = db.get_welcome_message(chat_id)
+    chat_title = update.message.chat.title or "Чат"
+    welcome_text = welcome_text.replace("[***]", chat_title).replace("ANT-X", chat_title)
     await update.message.reply_text(welcome_text)
 
 async def set_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1645,7 +1647,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         welcome_text = db.get_welcome_message(chat_id)
         chat_title = update.message.chat.title or "Чат"
-        welcome_text = welcome_text.replace("[***]", chat_title)
+        welcome_text = welcome_text.replace("[***]", chat_title).replace("ANT-X", chat_title)
         
         nick = db.get_nick(chat_id, user.id)
         if nick:
