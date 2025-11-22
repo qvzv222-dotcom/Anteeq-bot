@@ -350,10 +350,10 @@ async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-    creator = db.get_chat_creator(chat_id)
+    user_rank = db.get_user_rank(chat_id, user_id)
 
-    if creator != user_id:
-        await update.message.reply_text("Только создатель может назначать ранги")
+    if not has_access(chat_id, user_id, "3.2"):
+        await update.message.reply_text("Недостаточно прав")
         return
 
     if not update.message.reply_to_message:
@@ -384,6 +384,10 @@ async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Ранг должен быть числом от 0 до 5")
         return
 
+    if rank > user_rank:
+        await update.message.reply_text("❌ Вы можете назначить только равный или ниже ранг")
+        return
+
     target_user = update.message.reply_to_message.from_user
     
     rank_names = {
@@ -403,6 +407,7 @@ async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"Пользователю {target_user.first_name} назначен ранг: {rank_names[rank]}"
         )
+
 
 async def set_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
