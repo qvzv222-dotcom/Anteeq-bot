@@ -1610,7 +1610,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Для изучения действующих команд нажмите кнопку ниже:"""
         
-        keyboard = [[InlineKeyboardButton("📚 помощь", callback_data="help_command")]]
+        keyboard = [[InlineKeyboardButton("📚 Помощь", callback_data="help_command")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(capabilities_text, parse_mode='HTML', reply_markup=reply_markup)
