@@ -1189,13 +1189,8 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
-async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показать профиль текущего пользователя"""
-    user = update.message.from_user
-    chat_id = update.message.chat_id
-    user_id = user.id
-    
-    # Получаем данные о пользователе
+async def display_user_profile(chat_id: int, user_id: int, user_name: str, user_username: Optional[str] = None):
+    """Получить текст профиля пользователя"""
     rank = db.get_user_rank(chat_id, user_id)
     nick = db.get_nick(chat_id, user_id)
     warnings = db.get_user_warnings(chat_id, user_id)
@@ -1214,12 +1209,12 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     
     # Формируем текст профиля
-    user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
+    user_link = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
     profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
     profile_text += f"<b>Имя:</b> {user_link}\n"
     
-    if user.username:
-        profile_text += f"<b>Username:</b> @{user.username}\n"
+    if user_username:
+        profile_text += f"<b>Username:</b> @{user_username}\n"
     
     profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')}\n"
     
@@ -1240,6 +1235,39 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for award in awards:
             profile_text += f"  • {award}\n"
     
+    return profile_text
+
+async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать профиль текущего пользователя"""
+    user = update.message.from_user
+    chat_id = update.message.chat_id
+    
+    profile_text = await display_user_profile(chat_id, user.id, user.first_name, user.username)
+    await update.message.reply_text(profile_text, parse_mode='HTML')
+
+async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать профиль другого пользователя (по reply или mention)"""
+    chat_id = update.message.chat_id
+    target_user = None
+    target_user_id = None
+    
+    # 1. Проверяем reply
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        target_user_id = target_user.id
+    # 2. Проверяем text_mention entities
+    elif update.message.entities:
+        for entity in update.message.entities:
+            if entity.type == 'text_mention':
+                target_user = entity.user
+                target_user_id = target_user.id
+                break
+    
+    if not target_user_id:
+        await update.message.reply_text("❌ Ответьте на сообщение пользователя или упомяните его, чтобы посмотреть профиль.")
+        return
+    
+    profile_text = await display_user_profile(chat_id, target_user_id, target_user.first_name, target_user.username)
     await update.message.reply_text(profile_text, parse_mode='HTML')
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1273,6 +1301,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
