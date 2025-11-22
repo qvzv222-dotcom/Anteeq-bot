@@ -829,3 +829,14 @@ def set_max_warns(chat_id: int, max_warns: int):
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
         pass
+
+def remove_all_warns(chat_id: int, user_id: int):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM warns WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
