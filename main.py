@@ -1292,9 +1292,10 @@ def keep_alive():
 def ping_self():
     while True:
         try:
-            requests.get("https://ANTEEQ-BOT.qvzv222.repl.co", timeout=10)
+            response = requests.get("https://ANTEEQ-BOT.qvzv222.repl.co", timeout=10)
+            print(f"✅ PING: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Status: {response.status_code}")
         except Exception as e:
-            pass
+            print(f"❌ PING ERROR: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {str(e)}")
         time.sleep(300)  # 5 минут
 
 def main():
