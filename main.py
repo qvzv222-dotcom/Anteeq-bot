@@ -1204,6 +1204,8 @@ def get_section_from_command(command: str) -> str:
         return "3.3"
     elif command_lower in ["назначить"]:
         return "3.4"
+    elif command_lower in ["команды"]:
+        return "3.7"
     elif command_lower in ["+маты", "-маты"]:
         return "4.1"
     elif command_lower in ["!преды"]:
@@ -1246,6 +1248,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         r_3_2 = access_control.get('3.2', 3)
         r_3_3 = access_control.get('3.3', 0)
         r_3_4 = access_control.get('3.4', 3)
+        r_3_7 = access_control.get('3.7', 5)
         r_4_1 = access_control.get('4.1', 5)
         r_4_2 = access_control.get('4.2', 5)
         r_4 = access_control.get('4', 4)
@@ -1269,7 +1272,8 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
             f"3.3. 👋 Сообщение приветствия: <i>приветствие</i> {rank_emoji[r_3_2]}\n"
             f"3.4. 📢 Изменить приветствие: <i>+приветствие</i> {rank_emoji[r_3_2]}\n"
             f"3.5. 👨‍💼 Список администраторов: <i>админы</i> {rank_emoji[r_3_1]}\n"
-            f"3.6. 👤 Просмотр профиля: <i>кто я, кто ты</i> {rank_emoji[r_3_3]}\n\n"
+            f"3.6. 👤 Просмотр профиля: <i>кто я, кто ты</i> {rank_emoji[r_3_3]}\n"
+            f"3.7. 📚 Список команд: <i>команды</i> {rank_emoji[r_3_7]}\n\n"
             "🔵 <b>РАЗДЕЛ 4: Администраторские</b>\n"
             f"4.1. 🔰 Фильтр мата: <i>+маты, -маты</i> {rank_emoji[r_4_1]}\n"
             f"4.2. 📊 Макс. предупреждений: <i>!преды [число]</i> {rank_emoji[r_4_2]}\n"
