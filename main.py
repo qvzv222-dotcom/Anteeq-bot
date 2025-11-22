@@ -1591,8 +1591,58 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(welcome_text)
 
+async def my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.my_chat_member.chat.id
+    new_status = update.my_chat_member.new_chat_member.status
+    
+    if new_status in ['administrator', 'member']:
+        if new_status == 'administrator':
+            capabilities_text = """✅ <b>БОТ УСПЕШНО ДОБАВЛЕН В ГРУППУ С ADMIN-ПРАВАМИ!</b>
+
+🚀 <b>ОСНОВНЫЕ ФУНКЦИИ:</b>
+
+<b>🔴 Система наказаний:</b>
+• Мут/размут пользователей
+• Бан/разбан участников
+• Кик из группы
+• Система предупреждений (3 = автобан)
+• Снятие наказаний
+
+<b>🟡 Управление никнеймами:</b>
+• +ник [ник] - установить себе ник
+• -ник - удалить свой ник
+• Просмотр всех ников чата
+
+<b>🟢 Информирование:</b>
+• Правила чата и приветствие
+• Просмотр профилей участников
+• Полный список команд
+
+<b>🔵 Администраторские:</b>
+• Полная система доступа (ДК)
+• Фильтр мата
+• Система рангов (0-5 уровней)
+• Импорт/экспорт настроек
+
+<b>🟣 Система вознаграждения:</b>
+• Выдача наград участникам
+• Система достижений
+
+<b>⚙️ КОМАНДЫ:</b>
+• <code>помощь</code> - интерактивная справка
+• <code>команды</code> - полный список команд
+• <code>дк</code> - управление доступом
+• <code>админы</code> - список администраторов
+• <code>назначить</code> - выдать ранг участнику
+
+Используйте <code>помощь</code> или <code>команды</code> для полной информации!"""
+            
+            await context.bot.send_message(chat_id, capabilities_text, parse_mode='HTML')
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CallbackQueryHandler(lambda update, context: None))
+    application.add_handler(MessageHandler(filters.StatusUpdate.MY_CHAT_MEMBER, my_chat_member))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
