@@ -1,0 +1,49 @@
+File "/app/main.py", line 1739, in main
+    db.init_database()
+  File "/app/db.py", line 31, in init_database
+    conn = get_connection()
+           ^^^^^^^^^^^^^^^^
+  File "/app/db.py", line 14, in get_connection
+    return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+Инициализация базы данных...
+Traceback (most recent call last):
+  File "/app/main.py", line 1753, in <module>
+    main()
+  File "/app/main.py", line 1739, in main
+    db.init_database()
+  File "/app/db.py", line 31, in init_database
+    conn = get_connection()
+           ^^^^^^^^^^^^^^^^
+  File "/app/db.py", line 14, in get_connection
+    return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+Traceback (most recent call last):
+  File "/app/main.py", line 1753, in <module>
+Инициализация базы данных...
+    main()
+  File "/app/main.py", line 1739, in main
+    db.init_database()
+  File "/app/db.py", line 31, in init_database
+    conn = get_connection()
+           ^^^^^^^^^^^^^^^^
+  File "/app/db.py", line 14, in get_connection
+    return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
