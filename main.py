@@ -1189,7 +1189,7 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
-def display_user_profile(chat_id: int, user_id: int, user_name: str, user_username: Optional[str] = None) -> str:
+def display_user_profile(chat_id: int, user_id: int, user_name: str, user_lastname: Optional[str] = None) -> str:
     """Получить текст профиля пользователя"""
     try:
         rank = db.get_user_rank(chat_id, user_id)
@@ -1209,8 +1209,13 @@ def display_user_profile(chat_id: int, user_id: int, user_name: str, user_userna
             5: "🔱 Глава альянса"
         }
         
+        # Формируем полное имя
+        full_name = user_name
+        if user_lastname:
+            full_name = f"{user_name} {user_lastname}"
+        
         # Формируем текст профиля
-        user_link = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
+        user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
         profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
         profile_text += f"<b>Имя:</b> {user_link}\n"
         
@@ -1247,7 +1252,7 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.message.from_user
         chat_id = update.message.chat_id
         
-        profile_text = display_user_profile(chat_id, user.id, user.first_name, user.username)
+        profile_text = display_user_profile(chat_id, user.id, user.first_name, user.last_name)
         await update.message.reply_text(profile_text, parse_mode='HTML')
     except Exception as e:
         logging.error(f"who_am_i error: {str(e)}")
@@ -1276,7 +1281,7 @@ async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Ответьте на сообщение пользователя или упомяните его, чтобы посмотреть профиль.")
             return
         
-        profile_text = display_user_profile(chat_id, target_user_id, target_user.first_name, target_user.username)
+        profile_text = display_user_profile(chat_id, target_user_id, target_user.first_name, target_user.last_name)
         await update.message.reply_text(profile_text, parse_mode='HTML')
     except Exception as e:
         logging.error(f"who_is_this error: {str(e)}")
