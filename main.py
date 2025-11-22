@@ -32,7 +32,6 @@ if not BOT_TOKEN:
     exit(1)
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
-TEST_USER_ID = 1376105197
 
 def generate_chat_code() -> str:
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
@@ -1044,21 +1043,6 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
-async def send_test_dm(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        await context.bot.send_message(TEST_USER_ID, "тест")
-    except Exception as e:
-        print(f"Ошибка отправки ДМ: {str(e)}")
-
-def schedule_test_dm(job_queue):
-    job_queue.run_repeating(
-        send_test_dm,
-        interval=300,
-        first=5,
-        name="test_dm"
-    )
-    print(f"✅ Запланирована отправка ДМ каждые 5 минут (User ID: {TEST_USER_ID})")
-
 async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
 
@@ -1357,13 +1341,6 @@ def keep_alive():
     t = threading.Thread(target=run_flask, daemon=False)
     t.start()
 
-async def send_startup_message(app):
-    try:
-        await app.bot.send_message(TEST_USER_ID, "тест")
-        print(f"✅ Тестовое сообщение отправлено пользователю {TEST_USER_ID}")
-    except Exception as e:
-        print(f"❌ Ошибка отправки стартового сообщения: {str(e)}")
-
 def main():
     print("Инициализация базы данных...")
     db.init_database()
@@ -1376,12 +1353,6 @@ def main():
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
-    
-    # Запуск задачи отправки ДМ
-    schedule_test_dm(application.job_queue)
-    
-    # Отправить одно тестовое сообщение при старте
-    application.post_init = lambda app: send_startup_message(app)
     
     print("✅ Бот полностью инициализирован!")
     print("✅ Keep-alive сервер работает - проект останется активным!")
