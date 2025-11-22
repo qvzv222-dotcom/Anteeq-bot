@@ -1189,86 +1189,101 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
-async def display_user_profile(chat_id: int, user_id: int, user_name: str, user_username: Optional[str] = None):
+def display_user_profile(chat_id: int, user_id: int, user_name: str, user_username: Optional[str] = None) -> str:
     """Получить текст профиля пользователя"""
-    rank = db.get_user_rank(chat_id, user_id)
-    nick = db.get_nick(chat_id, user_id)
-    warnings = db.get_user_warnings(chat_id, user_id)
-    awards = db.get_user_awards(chat_id, user_id)
-    is_banned = db.is_user_banned(chat_id, user_id)
-    mute_info = db.get_mute_end_time(chat_id, user_id)
-    is_muted = mute_info is not None
-    
-    rank_names = {
-        0: "👤 Участник",
-        1: "🛡️ Модератор чата",
-        2: "📋 Наборщик", 
-        3: "⚔️ Заместитель главы клана",
-        4: "👑 Глава клана",
-        5: "🔱 Глава альянса"
-    }
-    
-    # Формируем текст профиля
-    user_link = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
-    profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
-    profile_text += f"<b>Имя:</b> {user_link}\n"
-    
-    if user_username:
-        profile_text += f"<b>Username:</b> @{user_username}\n"
-    
-    profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')}\n"
-    
-    if nick:
-        profile_text += f"<b>Ник:</b> {nick}\n"
-    
-    profile_text += f"<b>Предупреждения:</b> {len(warnings)}/3\n"
-    
-    if is_banned:
-        profile_text += "🚫 <b>Статус:</b> <u>Забанен</u>\n"
-    elif is_muted:
-        profile_text += "🔇 <b>Статус:</b> <u>Заммучен</u>\n"
-    else:
-        profile_text += "✅ <b>Статус:</b> <u>Активен</u>\n"
-    
-    if awards and len(awards) > 0:
-        profile_text += f"\n<b>🏆 Награды ({len(awards)}):</b>\n"
-        for award in awards:
-            profile_text += f"  • {award}\n"
-    
-    return profile_text
+    try:
+        rank = db.get_user_rank(chat_id, user_id)
+        nick = db.get_nick(chat_id, user_id)
+        warnings = db.get_user_warnings(chat_id, user_id)
+        awards = db.get_user_awards(chat_id, user_id)
+        is_banned = db.is_user_banned(chat_id, user_id)
+        mute_info = db.get_mute_end_time(chat_id, user_id)
+        is_muted = mute_info is not None
+        
+        rank_names = {
+            0: "👤 Участник",
+            1: "🛡️ Модератор чата",
+            2: "📋 Наборщик", 
+            3: "⚔️ Заместитель главы клана",
+            4: "👑 Глава клана",
+            5: "🔱 Глава альянса"
+        }
+        
+        # Формируем текст профиля
+        user_link = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
+        profile_text = f"<b>👤 Профиль пользователя</b>\n\n"
+        profile_text += f"<b>Имя:</b> {user_link}\n"
+        
+        if user_username:
+            profile_text += f"<b>Username:</b> @{user_username}\n"
+        
+        profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')}\n"
+        
+        if nick:
+            profile_text += f"<b>Ник:</b> {nick}\n"
+        
+        if warnings:
+            profile_text += f"<b>Предупреждения:</b> {len(warnings)}/3\n"
+        else:
+            profile_text += f"<b>Предупреждения:</b> 0/3\n"
+        
+        if is_banned:
+            profile_text += "🚫 <b>Статус:</b> <u>Забанен</u>\n"
+        elif is_muted:
+            profile_text += "🔇 <b>Статус:</b> <u>Заммучен</u>\n"
+        else:
+            profile_text += "✅ <b>Статус:</b> <u>Активен</u>\n"
+        
+        if awards and len(awards) > 0:
+            profile_text += f"\n<b>🏆 Награды ({len(awards)}):</b>\n"
+            for award in awards:
+                profile_text += f"  • {award}\n"
+        
+        return profile_text
+    except Exception as e:
+        logging.error(f"Error building profile: {str(e)}")
+        return f"❌ Ошибка при загрузке профиля: {str(e)}"
 
 async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать профиль текущего пользователя"""
-    user = update.message.from_user
-    chat_id = update.message.chat_id
-    
-    profile_text = await display_user_profile(chat_id, user.id, user.first_name, user.username)
-    await update.message.reply_text(profile_text, parse_mode='HTML')
+    try:
+        user = update.message.from_user
+        chat_id = update.message.chat_id
+        
+        profile_text = display_user_profile(chat_id, user.id, user.first_name, user.username)
+        await update.message.reply_text(profile_text, parse_mode='HTML')
+    except Exception as e:
+        logging.error(f"who_am_i error: {str(e)}")
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
 
 async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать профиль другого пользователя (по reply или mention)"""
-    chat_id = update.message.chat_id
-    target_user = None
-    target_user_id = None
-    
-    # 1. Проверяем reply
-    if update.message.reply_to_message:
-        target_user = update.message.reply_to_message.from_user
-        target_user_id = target_user.id
-    # 2. Проверяем text_mention entities
-    elif update.message.entities:
-        for entity in update.message.entities:
-            if entity.type == 'text_mention':
-                target_user = entity.user
-                target_user_id = target_user.id
-                break
-    
-    if not target_user_id:
-        await update.message.reply_text("❌ Ответьте на сообщение пользователя или упомяните его, чтобы посмотреть профиль.")
-        return
-    
-    profile_text = await display_user_profile(chat_id, target_user_id, target_user.first_name, target_user.username)
-    await update.message.reply_text(profile_text, parse_mode='HTML')
+    try:
+        chat_id = update.message.chat_id
+        target_user = None
+        target_user_id = None
+        
+        # 1. Проверяем reply
+        if update.message.reply_to_message:
+            target_user = update.message.reply_to_message.from_user
+            target_user_id = target_user.id
+        # 2. Проверяем text_mention entities
+        elif update.message.entities:
+            for entity in update.message.entities:
+                if entity.type == 'text_mention':
+                    target_user = entity.user
+                    target_user_id = target_user.id
+                    break
+        
+        if not target_user_id:
+            await update.message.reply_text("❌ Ответьте на сообщение пользователя или упомяните его, чтобы посмотреть профиль.")
+            return
+        
+        profile_text = display_user_profile(chat_id, target_user_id, target_user.first_name, target_user.username)
+        await update.message.reply_text(profile_text, parse_mode='HTML')
+    except Exception as e:
+        logging.error(f"who_is_this error: {str(e)}")
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
