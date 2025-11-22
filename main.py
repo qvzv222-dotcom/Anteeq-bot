@@ -1302,10 +1302,10 @@ async def toggle_profanity_filter(update: Update, context: ContextTypes.DEFAULT_
     await update.message.reply_text(f"Фильтр сквернословия для чата {status}")
 
 async def enable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await toggle_profanity_filter(update, context, True)
+    await toggle_profanity_filter(update, context, False)
 
 async def disable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await toggle_profanity_filter(update, context, False)
+    await toggle_profanity_filter(update, context, True)
 
 async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Установить максимальное количество предупреждений (только ранг 5)"""
