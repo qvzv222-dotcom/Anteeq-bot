@@ -87,6 +87,27 @@ async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAU
             if not creator:
                 db.set_chat_creator(chat_id, user.id)
 
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.chat.type == 'private':
+        keyboard = [
+            [InlineKeyboardButton("➕ Добавить бота в группу", url="https://t.me/anteeq_admin_bot?startgroup=true")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        welcome_text = """👋 Добавьте меня в вашу группу или супергруппу!
+
+После добавления вы получите полный доступ к функциям управления чатом:
+• 🔨 Модерация: мут, бан, кик, предупреждения
+• 👤 Управление никнеймами и профилями
+• ⚙️ Гибкая система доступа к командам
+• 🏆 Система вознаграждения и рангов
+• 📋 Правила и приветствия чата
+• 🎯 И многое другое!
+
+Нажмите кнопку ниже, чтобы добавить бота:"""
+        
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("👤 Ники", callback_data="nicks_help"), InlineKeyboardButton("⚠️ Преды", callback_data="warns_help")],
@@ -1564,6 +1585,8 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
+    application.add_handler(CommandHandler("start", start_command))
+    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
