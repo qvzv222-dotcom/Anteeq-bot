@@ -1194,10 +1194,10 @@ def display_user_profile(chat_id: int, user_id: int, user_name: str, user_userna
     try:
         rank = db.get_user_rank(chat_id, user_id)
         nick = db.get_nick(chat_id, user_id)
-        warnings = db.get_user_warnings(chat_id, user_id)
-        awards = db.get_user_awards(chat_id, user_id)
-        is_banned = db.is_user_banned(chat_id, user_id)
-        mute_info = db.get_mute_end_time(chat_id, user_id)
+        warnings = db.get_warns(chat_id, user_id) or []
+        awards = db.get_user_awards(chat_id, user_id) or []
+        is_banned = db.is_banned(chat_id, user_id)
+        mute_info = db.get_mute_time(chat_id, user_id)
         is_muted = mute_info is not None
         
         rank_names = {
