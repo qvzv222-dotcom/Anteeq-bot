@@ -675,11 +675,10 @@ async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-    creator = db.get_chat_creator(chat_id)
-    is_creator = creator == user_id
+    user_rank = db.get_user_rank(chat_id, user_id)
 
-    if not is_creator and not has_access(chat_id, user_id, "1.5"):
-        await update.message.reply_text("Недостаточно прав")
+    if user_rank < 3:
+        await update.message.reply_text("❌ Требуется ранг 3 или выше")
         return
 
     if not update.message.reply_to_message:
@@ -697,13 +696,48 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     db.remove_last_warn(chat_id, target_user.id)
     warn_count = db.get_warn_count(chat_id, target_user.id)
+    max_warns = db.get_max_warns(chat_id)
     
-    if db.is_banned(chat_id, target_user.id) and warn_count < 3:
+    if db.is_banned(chat_id, target_user.id) and warn_count < max_warns:
         db.remove_ban(chat_id, target_user.id)
 
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
     await update.message.reply_text(
-        f"Предупреждение снято с {user_link}\nОсталось предупреждений: {warn_count}/3",
+        f"Предупреждение снято с {user_link}\nОсталось предупреждений: {warn_count}/{max_warns}",
+        parse_mode='HTML'
+    )
+
+async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Снять все предупреждения пользователю (ранг 3+)"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    user_rank = db.get_user_rank(chat_id, user_id)
+
+    if user_rank < 3:
+        await update.message.reply_text("❌ Требуется ранг 3 или выше")
+        return
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'снять все преды'")
+        return
+
+    target_user = update.message.reply_to_message.from_user
+
+    warns = db.get_warns(chat_id, target_user.id)
+
+    if not warns:
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(f"У {user_link} нет предупреждений", parse_mode='HTML')
+        return
+
+    db.remove_all_warns(chat_id, target_user.id)
+    
+    if db.is_banned(chat_id, target_user.id):
+        db.remove_ban(chat_id, target_user.id)
+
+    user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+    await update.message.reply_text(
+        f"✅ Все предупреждения сняты с {user_link}",
         parse_mode='HTML'
     )
 
@@ -1422,6 +1456,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+правила'), set_rules))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^преды$'), show_warns))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^снять все преды$'), remove_all_warns))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:снять пред|снять варн)'), remove_warn))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(?:варн|пред)(?:\s|$)'), warn_user))
     
