@@ -451,6 +451,7 @@ async def remove_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    user_rank = db.get_user_rank(chat_id, user_id)
 
     if not has_access(chat_id, user_id, "2.2"):
         await update.message.reply_text("Недостаточно прав")
@@ -460,6 +461,13 @@ async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите '+ник другому [никнейм]'")
         return
 
+    target_user = update.message.reply_to_message.from_user
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+
+    if user_rank < target_rank:
+        await update.message.reply_text("❌ Вы не можете установить ник пользователю с более высоким рангом")
+        return
+
     text = update.message.text.strip()
     parts = text.split(maxsplit=2)
     
@@ -467,7 +475,6 @@ async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Использование: +ник другому [никнейм]")
         return
 
-    target_user = update.message.reply_to_message.from_user
     nick = parts[2]
     db.set_nick(chat_id, target_user.id, nick)
     await update.message.reply_text(f"Ник для пользователя {target_user.first_name} установлен: {nick}")
@@ -475,6 +482,7 @@ async def set_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def remove_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    user_rank = db.get_user_rank(chat_id, user_id)
 
     if not has_access(chat_id, user_id, "2.2"):
         await update.message.reply_text("Недостаточно прав")
@@ -485,6 +493,12 @@ async def remove_nick_other(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+
+    if user_rank < target_rank:
+        await update.message.reply_text("❌ Вы не можете удалить ник пользователю с более высоким рангом")
+        return
+
     nick = db.get_nick(chat_id, target_user.id)
     
     if nick:
