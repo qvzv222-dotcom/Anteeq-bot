@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import threading
 import time
+import requests
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -1189,6 +1190,63 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
+async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    if len(parts) < 2 or not parts[1].strip():
+        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск Python")
+        return
+    
+    query = parts[1]
+    await update.message.reply_text(f"🔍 Ищу: <b>{query}</b>...", parse_mode='HTML')
+    
+    try:
+        url = "https://api.duckduckgo.com/"
+        params = {
+            'q': query,
+            'format': 'json',
+            'no_redirect': 1,
+            't': 'telegram_bot'
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        results_text = "🌐 <b>Результаты поиска:</b>\n\n"
+        found = False
+        
+        if data.get('Heading'):
+            results_text += f"<b>📌 {data['Heading']}</b>\n"
+        
+        if data.get('Abstract'):
+            abstract = data['Abstract'][:200] + "..." if len(data['Abstract']) > 200 else data['Abstract']
+            results_text += f"{abstract}\n\n"
+            found = True
+        
+        if data.get('AbstractURL'):
+            results_text += f"<a href='{data['AbstractURL']}'>🔗 Подробнее</a>\n\n"
+        
+        related = data.get('RelatedTopics', [])
+        if related and len(related) > 0:
+            results_text += "<b>📚 Связанные:</b>\n"
+            for item in related[:2]:
+                if isinstance(item, dict) and 'Text' in item:
+                    text_content = item['Text'][:60] + "..." if len(item.get('Text', '')) > 60 else item.get('Text', '')
+                    results_text += f"• {text_content}\n"
+                    found = True
+        
+        if not found:
+            await update.message.reply_text("❌ Результатов не найдено. Попробуйте другой запрос.")
+            return
+        
+        await update.message.reply_text(results_text, parse_mode='HTML')
+        
+    except Exception as e:
+        logging.error(f"Web search error: {str(e)}")
+        await update.message.reply_text(f"❌ Ошибка поиска: {str(e)}")
+
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1220,6 +1278,8 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^поиск\s+'), web_search))
+    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
