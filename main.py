@@ -1204,46 +1204,39 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔍 Ищу: <b>{query}</b>...", parse_mode='HTML')
     
     try:
-        api_url = "https://api.duckduckgo.com/"
+        headers = {'User-Agent': 'Telegram-Bot/1.0'}
+        
+        search_url = "https://en.wikipedia.org/w/api.php"
         params = {
-            'q': query,
+            'action': 'query',
+            'list': 'search',
+            'srsearch': query,
             'format': 'json',
-            'no_redirect': 1,
-            't': 'telegram_bot'
+            'srLimit': 3
         }
         
-        response = requests.get(api_url, params=params, timeout=10)
+        response = requests.get(search_url, params=params, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         
-        results_text = "🌐 <b>Результаты поиска:</b>\n\n"
-        found = False
+        search_results = data.get('query', {}).get('search', [])
         
-        if data.get('Heading'):
-            results_text += f"<b>📌 {data['Heading']}</b>\n"
-        
-        if data.get('Abstract'):
-            results_text += f"{data['Abstract']}\n\n"
-            found = True
-        
-        if data.get('AbstractURL'):
-            results_text += f"<a href='{data['AbstractURL']}'>🔗 Подробнее</a>\n\n"
-        
-        related = data.get('RelatedTopics', [])
-        if related:
-            results_text += "<b>📚 Связанные результаты:</b>\n"
-            for item in related[:3]:
-                if isinstance(item, dict):
-                    if 'Text' in item:
-                        text_content = item['Text'][:80] + "..." if len(item.get('Text', '')) > 80 else item.get('Text', '')
-                        results_text += f"• {text_content}\n"
-                        if item.get('FirstURL'):
-                            results_text += f"  <a href='{item['FirstURL']}'>🔗</a>\n"
-                        found = True
-        
-        if not found:
+        if not search_results:
             await update.message.reply_text("❌ Результатов не найдено. Попробуйте другой запрос.")
             return
+        
+        results_text = "🌐 <b>Результаты поиска:</b>\n\n"
+        
+        for i, result in enumerate(search_results[:3], 1):
+            title = result.get('title', 'Без названия')
+            snippet = result.get('snippet', '')
+            snippet_clean = snippet.replace('<span class="searchmatch">', '').replace('</span>', '')[:100]
+            wiki_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+            
+            results_text += f"<b>{i}. {title}</b>\n"
+            if snippet_clean:
+                results_text += f"<i>{snippet_clean}...</i>\n"
+            results_text += f"<a href='{wiki_url}'>🔗 Читать</a>\n\n"
         
         await update.message.reply_text(results_text, parse_mode='HTML')
         
