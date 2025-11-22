@@ -1290,6 +1290,9 @@ def keep_alive():
 
 # Функция для самопинга
 def ping_self():
+    time.sleep(5)  # Дать Flask время на инициализацию
+    print("🔄 Самопинг запущен, первый пинг через 5 сек...")
+    
     while True:
         try:
             response = requests.get("http://localhost:8080", timeout=10)
@@ -1302,17 +1305,18 @@ def main():
     print("Инициализация базы данных...")
     db.init_database()
     
-    print("Запуск keep-alive сервера...")
+    print("Запуск keep-alive сервера на порту 8080...")
     keep_alive()
+    time.sleep(2)
     
-    print("Запуск самопинга...")
-    ping_thread = threading.Thread(target=ping_self, daemon=True)
+    print("Запуск самопинга (отправляет запрос каждые 5 минут)...")
+    ping_thread = threading.Thread(target=ping_self, daemon=False)  # Non-daemon - будет держать процесс
     ping_thread.start()
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
-    print("Бот запущен...")
+    print("✅ Бот полностью инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
     application.run_polling()
 
