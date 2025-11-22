@@ -5,6 +5,7 @@ import string
 import re
 from datetime import datetime, timedelta
 from typing import Optional
+import threading
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -13,6 +14,7 @@ from telegram.ext import (
 )
 
 import db
+from health_check import start_health_check
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1273,6 +1275,9 @@ def setup_handlers(application):
 def main():
     print("Инициализация базы данных...")
     db.init_database()
+    
+    print("Запуск health check сервера...")
+    start_health_check()
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
