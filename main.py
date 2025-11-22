@@ -1648,8 +1648,19 @@ async def handle_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TY
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     
-    from telegram.ext import TypeHandler
-    application.add_handler(TypeHandler(Update, handle_my_chat_member), group=-1)
+    async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.my_chat_member:
+            await handle_my_chat_member(update, context)
+    
+    application.post_init = lambda: None
+    original_process_update = application.process_update
+    
+    async def new_process_update(update):
+        await process_update(update, None)
+        return await original_process_update(update)
+    
+    application.process_update = new_process_update
+    
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
@@ -1727,6 +1738,9 @@ def keep_alive():
     t = threading.Thread(target=run_flask, daemon=False)
     t.start()
 
+async def my_chat_member_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_my_chat_member(update, context)
+
 def main():
     print("Инициализация базы данных...")
     db.init_database()
@@ -1737,6 +1751,8 @@ def main():
     
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
+    
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
     print("✅ Бот полностью инициализирован!")
     print("✅ Keep-alive сервер работает - проект останется активным!")
