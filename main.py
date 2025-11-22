@@ -1197,57 +1197,55 @@ async def web_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = text.split(maxsplit=1)
     
     if len(parts) < 2 or not parts[1].strip():
-        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск Python программирование")
+        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск Python")
         return
     
     query = parts[1]
-    await update.message.reply_text(f"🔍 Ищу в интернете: <b>{query}</b>...", parse_mode='HTML')
+    await update.message.reply_text(f"🔍 Ищу: <b>{query}</b>...", parse_mode='HTML')
     
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        api_url = "https://api.duckduckgo.com/"
+        params = {
+            'q': query,
+            'format': 'json',
+            'no_redirect': 1,
+            't': 'telegram_bot'
         }
         
-        search_url = f"https://www.google.com/search?q={quote(query)}&num=3"
-        response = requests.get(search_url, headers=headers, timeout=10)
+        response = requests.get(api_url, params=params, timeout=10)
         response.raise_for_status()
+        data = response.json()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        results = []
+        results_text = "🌐 <b>Результаты поиска:</b>\n\n"
+        found = False
         
-        for div in soup.find_all('div', class_='g')[:3]:
-            try:
-                title_elem = div.find('h3')
-                link_elem = div.find('a')
-                snippet_elem = div.find('span', class_='st')
-                
-                if title_elem and link_elem:
-                    title = title_elem.get_text(strip=True)
-                    url = link_elem.get('href', '')
-                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
-                    
-                    if url and not url.startswith('http'):
-                        continue
-                    
-                    if title and url:
-                        results.append({'title': title, 'url': url, 'snippet': snippet})
-            except:
-                continue
+        if data.get('Heading'):
+            results_text += f"<b>📌 {data['Heading']}</b>\n"
         
-        if not results:
-            await update.message.reply_text("❌ Результатов не найдено")
+        if data.get('Abstract'):
+            results_text += f"{data['Abstract']}\n\n"
+            found = True
+        
+        if data.get('AbstractURL'):
+            results_text += f"<a href='{data['AbstractURL']}'>🔗 Подробнее</a>\n\n"
+        
+        related = data.get('RelatedTopics', [])
+        if related:
+            results_text += "<b>📚 Связанные результаты:</b>\n"
+            for item in related[:3]:
+                if isinstance(item, dict):
+                    if 'Text' in item:
+                        text_content = item['Text'][:80] + "..." if len(item.get('Text', '')) > 80 else item.get('Text', '')
+                        results_text += f"• {text_content}\n"
+                        if item.get('FirstURL'):
+                            results_text += f"  <a href='{item['FirstURL']}'>🔗</a>\n"
+                        found = True
+        
+        if not found:
+            await update.message.reply_text("❌ Результатов не найдено. Попробуйте другой запрос.")
             return
         
-        response_text = "🌐 <b>Результаты поиска:</b>\n\n"
-        for i, result in enumerate(results[:3], 1):
-            response_text += f"<b>{i}. {result['title']}</b>\n"
-            if result['snippet']:
-                snippet = result['snippet'][:100] + "..." if len(result['snippet']) > 100 else result['snippet']
-                response_text += f"<i>{snippet}</i>\n"
-            response_text += f"<a href='{result['url']}'>🔗 Открыть</a>\n\n"
-        
-        await update.message.reply_text(response_text, parse_mode='HTML')
+        await update.message.reply_text(results_text, parse_mode='HTML')
         
     except Exception as e:
         logging.error(f"Web search error: {str(e)}")
