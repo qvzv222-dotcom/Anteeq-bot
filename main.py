@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 import threading
 import time
-import requests
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
@@ -30,8 +29,6 @@ if not BOT_TOKEN:
     print("Ошибка: BOT_TOKEN не найден!")
     print("Добавьте BOT_TOKEN в Secrets (Environment Variables)")
     exit(1)
-
-DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
 
@@ -1192,64 +1189,6 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
         f"Для команды '{command_name}' теперь требуется ранг: {rank_names[rank]}"
     )
 
-async def search_deepseek(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    if not DEEPSEEK_API_KEY:
-        await update.message.reply_text("❌ DeepSeek API ключ не настроен. Обратитесь к администратору.")
-        return
-    
-    text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
-    
-    if len(parts) < 2 or not parts[1].strip():
-        await update.message.reply_text("Использование: поиск {запрос}\nПример: поиск как готовить пиццу")
-        return
-    
-    query = parts[1]
-    
-    await update.message.reply_text(f"🔍 Ищу ответ на запрос: <b>{query}</b>...", parse_mode='HTML')
-    
-    try:
-        response = requests.post(
-            "https://api.deepseek.com/chat/completions",
-            headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "deepseek-chat",
-                "messages": [
-                    {"role": "system", "content": "Ты помощник в Telegram чате. Отвечай кратко и по делу."},
-                    {"role": "user", "content": query}
-                ],
-                "temperature": 0.7,
-                "max_tokens": 500,
-                "stream": False
-            },
-            timeout=30
-        )
-        
-        if response.status_code != 200:
-            await update.message.reply_text(f"❌ Ошибка API: {response.status_code}")
-            return
-        
-        data = response.json()
-        answer = data.get('choices', [{}])[0].get('message', {}).get('content', '')
-        
-        if not answer:
-            await update.message.reply_text("❌ Не удалось получить ответ от нейросети")
-            return
-        
-        await update.message.reply_text(f"🤖 <b>DeepSeek ответ:</b>\n\n{answer}", parse_mode='HTML')
-        
-    except requests.exceptions.Timeout:
-        await update.message.reply_text("⏱️ Превышено время ожидания ответа от нейросети")
-    except Exception as e:
-        logging.error(f"DeepSeek error: {str(e)}")
-        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
-
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
 
@@ -1281,8 +1220,6 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
 
 def setup_handlers(application):
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^поиск\s+'), search_deepseek))
-    
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^помощь$'), help_command))
