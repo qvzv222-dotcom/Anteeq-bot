@@ -1652,21 +1652,66 @@ class MyUpdate:
     def __bool__(self):
         return self.update.my_chat_member is not None
 
-async def check_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.my_chat_member:
-        await handle_my_chat_member(update, context)
-
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     
-    from telegram.ext import BaseHandler
+    async def my_chat_member_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        try:
+            chat_id = update.my_chat_member.chat.id
+            new_status = update.my_chat_member.new_chat_member.status
+            logging.info(f"🔔 MY_CHAT_MEMBER: chat_id={chat_id}, status={new_status}")
+            
+            if new_status == 'administrator':
+                capabilities_text = """✅ <b>БОТ УСПЕШНО ДОБАВЛЕН В ГРУППУ С ADMIN-ПРАВАМИ!</b>
+
+🚀 <b>ОСНОВНЫЕ ФУНКЦИИ:</b>
+
+<b>🔴 Система наказаний:</b>
+• Мут/размут пользователей
+• Бан/разбан участников
+• Кик из группы
+• Система предупреждений (3 = автобан)
+• Снятие наказаний
+
+<b>🟡 Управление никнеймами:</b>
+• +ник [ник] - установить себе ник
+• -ник - удалить свой ник
+• Просмотр всех ников чата
+
+<b>🟢 Информирование:</b>
+• Правила чата и приветствие
+• Просмотр профилей участников
+• Полный список команд
+
+<b>🔵 Администраторские:</b>
+• Полная система доступа (ДК)
+• Фильтр мата
+• Система рангов (0-5 уровней)
+• Импорт/экспорт настроек
+
+<b>🟣 Система вознаграждения:</b>
+• Выдача наград участникам
+• Система достижений
+
+<b>⚙️ КОМАНДЫ:</b>
+• <code>помощь</code> - интерактивная справка
+• <code>команды</code> - полный список команд
+• <code>дк</code> - управление доступом
+• <code>админы</code> - список администраторов
+• <code>назначить</code> - выдать ранг участнику
+
+Используйте <code>помощь</code> или <code>команды</code> для полной информации!"""
+                await context.bot.send_message(chat_id, capabilities_text, parse_mode='HTML')
+                logging.info(f"✅ Сообщение отправлено в чат {chat_id}")
+        except Exception as e:
+            logging.error(f"❌ Ошибка в my_chat_member_update: {e}", exc_info=True)
     
+    from telegram.ext import BaseHandler
     class MyChatMemberHandler(BaseHandler):
         def check_update(self, update):
             return update.my_chat_member is not None
     
-    application.add_handler(MyChatMemberHandler(check_my_chat_member))
-    
+    application.add_handler(MyChatMemberHandler(my_chat_member_update))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(nicks_help|warns_help|rules_help)"))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
