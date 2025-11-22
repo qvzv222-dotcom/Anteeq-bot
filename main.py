@@ -1536,12 +1536,18 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await check_and_set_creator_rank(update, context)
 
     creator = db.get_chat_creator(chat_id)
+    bot_was_added = any(user.is_bot for user in update.message.new_chat_members)
+    
     if not creator:
-        if is_creator_username(update.message.from_user.username):
+        if bot_was_added:
+            db.set_chat_creator(chat_id, update.message.from_user.id)
+            db.set_user_rank(chat_id, update.message.from_user.id, 5)
+        elif is_creator_username(update.message.from_user.username):
             db.set_chat_creator(chat_id, update.message.from_user.id)
             db.set_user_rank(chat_id, update.message.from_user.id, 5)
         else:
             db.set_chat_creator(chat_id, update.message.from_user.id)
+            db.set_user_rank(chat_id, update.message.from_user.id, 5)
 
     for user in update.message.new_chat_members:
         if user.is_bot:
