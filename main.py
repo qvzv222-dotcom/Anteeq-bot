@@ -1292,7 +1292,7 @@ def keep_alive():
 def ping_self():
     while True:
         try:
-            response = requests.get("https://anteeq-bot-qvzv222.repl.co", timeout=10)
+            response = requests.get("http://localhost:8080", timeout=10)
             print(f"✅ PING: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Status: {response.status_code}")
         except Exception as e:
             print(f"❌ PING ERROR: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {str(e)}")
