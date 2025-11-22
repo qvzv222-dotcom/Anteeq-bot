@@ -1200,6 +1200,7 @@ def display_user_profile(chat_id: int, user_id: int, user_name: str, user_lastna
         is_banned = db.is_banned(chat_id, user_id)
         mute_info = db.get_mute_time(chat_id, user_id)
         is_muted = mute_info is not None
+        max_warns = db.get_max_warns(chat_id)
         
         rank_names = {
             0: "👤 Участник",
@@ -1226,9 +1227,9 @@ def display_user_profile(chat_id: int, user_id: int, user_name: str, user_lastna
         profile_text += f"<b>Ранг:</b> {rank_names.get(rank, 'Неизвестный')} [{rank}]\n"
         
         if warnings:
-            profile_text += f"<b>Предупреждения:</b> {len(warnings)}/3\n"
+            profile_text += f"<b>Предупреждения:</b> {len(warnings)}/{max_warns}\n"
         else:
-            profile_text += f"<b>Предупреждения:</b> 0/3\n"
+            profile_text += f"<b>Предупреждения:</b> 0/{max_warns}\n"
         
         if is_banned:
             profile_text += "🚫 <b>Статус:</b> <u>Забанен</u>\n"
