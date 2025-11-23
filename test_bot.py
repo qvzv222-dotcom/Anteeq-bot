@@ -977,6 +977,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         username_or_id = parts[1]
+        target_user = None
         try:
             target_id = None
             if username_or_id.isdigit():
@@ -984,14 +985,21 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 username = username_or_id.lstrip('@')
                 try:
-                    member = await context.bot.get_chat_member(chat_id, username)
+                    member = await context.bot.get_chat_member(chat_id, f"@{username}")
                     target_id = member.user.id
-                except Exception as user_err:
-                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
-                    return
+                    target_user = member.user
+                except:
+                    try:
+                        member = await context.bot.get_chat_member(chat_id, username)
+                        target_id = member.user.id
+                        target_user = member.user
+                    except:
+                        await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                        return
             
-            member = await context.bot.get_chat_member(chat_id, target_id)
-            target_user = member.user
+            if not target_user:
+                member = await context.bot.get_chat_member(chat_id, target_id)
+                target_user = member.user
             
             if len(parts) > 2:
                 try:
