@@ -1050,6 +1050,118 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка при муте: {str(e)}")
 
+async def find_user_by_username_in_chat(bot, chat_id, username):
+    """Поиск пользователя по юзернейму в чате"""
+    try:
+        async for member in bot.get_chat_members(chat_id):
+            if (member.user.username and 
+                member.user.username.lower() == username.lower()):
+                return member.user
+    except Exception as e:
+        print(f"Ошибка поиска пользователя: {e}")
+    return None
+
+async def mute_by_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Мут пользователя по юзернейму"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not has_access(chat_id, user_id, "1.1"):
+        await update.message.reply_text("❌ Недостаточно прав")
+        return
+
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    if len(parts) < 3:
+        await update.message.reply_text(
+            "❌ Использование: мутюзер @username время [с/м] [причина]\n\n"
+            "Примеры:\n"
+            "• мутюзер @username 5 м спам\n"
+            "• мутюзер @username 60 с флуд\n"
+            "• мутюзер @username 30 м"
+        )
+        return
+
+    username = parts[1].lstrip('@')
+    
+    try:
+        duration = int(parts[2])
+        if duration <= 0:
+            await update.message.reply_text("❌ Время мута должно быть положительным числом!")
+            return
+    except ValueError:
+        await update.message.reply_text("❌ Время мута должно быть числом!")
+        return
+
+    unit = "минут"
+    reason = "Не указана"
+    
+    if len(parts) > 3:
+        unit_str = parts[3].lower()
+        if unit_str in ['с', 'сек', 'секунд']:
+            unit = "секунд"
+        elif unit_str in ['м', 'мин', 'минут']:
+            unit = "минут"
+        else:
+            reason = ' '.join(parts[3:])
+            unit = "минут"
+    
+    if len(parts) > 4 and reason == "Не указана":
+        reason = ' '.join(parts[4:])
+
+    try:
+        target_user = await find_user_by_username_in_chat(context.bot, chat_id, username)
+        
+        if not target_user:
+            await update.message.reply_text(f"❌ Пользователь @{username} не найден в этом чате!")
+            return
+
+        target_member = await context.bot.get_chat_member(chat_id, target_user.id)
+        
+        if target_member.status in ['administrator', 'creator']:
+            await update.message.reply_text("❌ Нельзя замутить администратора!")
+            return
+
+        if target_user.id == user_id:
+            await update.message.reply_text("❌ Вы не можете мутить себя!")
+            return
+
+        if target_user.id == context.bot.id:
+            await update.message.reply_text("❌ Вы не можете мутить бота!")
+            return
+
+        if unit == "секунд":
+            unmute_time = datetime.now() + timedelta(seconds=duration)
+        else:
+            unmute_time = datetime.now() + timedelta(minutes=duration)
+
+        db.mute_user(chat_id, target_user.id, unmute_time, reason)
+
+        await context.bot.restrict_chat_member(
+            chat_id=chat_id,
+            user_id=target_user.id,
+            permissions=ChatPermissions(
+                can_send_messages=False,
+                can_send_media_messages=False,
+                can_send_other_messages=False,
+                can_add_web_page_previews=False,
+                can_send_polls=False
+            ),
+            until_date=unmute_time
+        )
+
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(
+            f"🔇 Пользователь {user_link} (@{username}) замьючен!\n"
+            f"⏰ Время: {duration} {unit}\n"
+            f"📝 Причина: {reason}",
+            parse_mode='HTML'
+        )
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+
 async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
@@ -1488,6 +1600,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кик'), kick_user))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бан'), ban_user))
     
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^мутюзер'), mute_by_username))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^(размут|говори)'), unmute_user))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^мут'), mute_user))
     
