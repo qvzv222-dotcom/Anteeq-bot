@@ -1593,11 +1593,11 @@ def main():
     
     # Start Flask health check server in background thread
     def run_flask():
-        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+        app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
     
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    print("🌐 Flask health check server started on port 5000")
+    print("🌐 Flask health check server started on port 8080 (TEST BOT)")
     
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
