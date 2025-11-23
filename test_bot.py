@@ -650,10 +650,17 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     max_warns = db.get_max_warns(chat_id)
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
 
-    await update.message.reply_text(
-        f"{user_link} получил предупреждение ({warn_count}/{max_warns})\nПричина: {reason}",
-        parse_mode='HTML'
-    )
+    if warn_count >= max_warns:
+        db.ban_user(chat_id, target_user.id, reason)
+        await update.message.reply_text(
+            f"{user_link} получил {warn_count} предупреждений и был забанен",
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            f"{user_link} получил предупреждение ({warn_count}/{max_warns})\nПричина: {reason}",
+            parse_mode='HTML'
+        )
 
 async def show_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -1256,12 +1263,19 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         warn_count = len(warns) if warns else 0
         max_warns = db.get_max_warns(chat_id)
         
-        user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
-        await context.bot.send_message(
-            chat_id,
-            f"⚠️ {user_link} предупреждение за мат ({warn_count}/{max_warns})",
-            parse_mode='HTML'
-        )
+        if warn_count >= max_warns:
+            db.add_ban(chat_id, user_id)
+            await context.bot.send_message(
+                chat_id,
+                f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count}+ предупреждения)"
+            )
+        else:
+            user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
+            await context.bot.send_message(
+                chat_id,
+                f"⚠️ {user_link} предупреждение за мат ({warn_count}/{max_warns})",
+                parse_mode='HTML'
+            )
 
 async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
