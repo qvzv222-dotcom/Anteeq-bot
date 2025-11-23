@@ -2,4 +2,3 @@ flask>=3.1.2
 psycopg2-binary>=2.9.11
 python-telegram-bot[job-queue]>=22.5
 requests>=2.32.5
-python-telegram-bot[job-queue]
