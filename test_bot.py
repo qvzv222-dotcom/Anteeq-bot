@@ -1430,7 +1430,18 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
         emoji = type_emoji.get(record['punishment_type'], '📌')
         reason = (record['punishment_reason'] or "—")[:20]
         date_str = record['punishment_date'].strftime("%d.%m") if record['punishment_date'] else "?"
-        lines.append(f"{emoji} {record['user_id']} | {reason} | {date_str}")
+        user_id_punished = record['user_id']
+        
+        try:
+            user_info = await context.bot.get_chat_member(chat_id, user_id_punished)
+            full_name = user_info.user.first_name or ""
+            if user_info.user.last_name:
+                full_name += f" {user_info.user.last_name}"
+            user_link = f"<a href='tg://user?id={user_id_punished}'>{full_name.strip()}</a>"
+        except:
+            user_link = str(user_id_punished)
+        
+        lines.append(f"{emoji} {user_link} | {reason} | {date_str}")
     
     log_text = "📋 <b>ЖУРНАЛ НАКАЗАНИЙ</b>\n" + "\n".join(lines)
     if len(log_data) > 50:

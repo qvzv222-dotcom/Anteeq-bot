@@ -1361,8 +1361,17 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
             'бан': '🚫'
         }.get(punishment_type, '📌')
         
+        try:
+            user_info = await context.bot.get_chat_member(chat_id, user_id_punished)
+            full_name = user_info.user.first_name or ""
+            if user_info.user.last_name:
+                full_name += f" {user_info.user.last_name}"
+            user_link = f"<a href='tg://user?id={user_id_punished}'>{full_name.strip()}</a>"
+        except:
+            user_link = str(user_id_punished)
+        
         log_text += f"{type_emoji} <b>{punishment_type.capitalize()}</b>\n"
-        log_text += f"👤 ID: {user_id_punished}\n"
+        log_text += f"👤 {user_link}\n"
         log_text += f"📝 Причина: {reason}\n"
         log_text += f"🕐 Дата: {formatted_date}\n\n"
     
