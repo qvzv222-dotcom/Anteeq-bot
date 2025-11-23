@@ -1201,7 +1201,10 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         welcome_text = db.get_welcome_message(chat_id)
         chat_title = update.message.chat.title or "Чат"
-        welcome_text = welcome_text.replace("[***]", chat_title).replace("ANT-X", chat_title)
+        if welcome_text:
+            welcome_text = welcome_text.replace("[***]", chat_title).replace("ANT-X", chat_title)
+        else:
+            welcome_text = f"👋 Добро пожаловать в {chat_title}!"
         
         nick = db.get_nick(chat_id, user.id)
         if nick:
@@ -1231,7 +1234,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    profanity_enabled = db.is_profanity_filter_enabled(chat_id)
+    profanity_enabled = db.get_profanity_filter_status(chat_id)
     
     if not profanity_enabled:
         return
