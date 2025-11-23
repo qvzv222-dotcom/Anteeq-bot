@@ -4,28 +4,30 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
 
 ## Recent Changes
-- **2025-11-23**: Permanent mute system implemented ✅
-  - Removed all time-based automatic unmute functionality
-  - Deleted `get_expired_mutes()` and `get_mute_time()` functions from db.py
-  - Updated `mute_user()` function to permanently store mutes without expiration timestamps
-  - Removed `unmute_time` and `until_date` parameters from mute commands in main.py and test_bot.py
-  - Mutes now last indefinitely until admin manually runs `размут` command
-  - Both production and test bots running successfully on Replit
+- **2025-11-23**: Separated test and production bots into independent workflows ✅
+  - Removed workflow conflicts (test_bot + main.py couldn't run simultaneously)
+  - Created **Production Bot** workflow - runs main.py on Replit
+  - Test Bot now runs manually from terminal: `python test_bot.py`
+  - Test bot uses TEST_BOT_TOKEN, production uses BOT_TOKEN (separate tokens)
+  - Workflow: Test features in test_bot.py → Copy code to main.py → `git push` → Render auto-deploys
+  - No more conflicts between development and production!
 
-- **2025-11-23**: Dual-bot development setup ✅
-  - Created test_bot.py for safe development and testing
-  - Test bot uses TEST_BOT_TOKEN (separate from production BOT_TOKEN)
-  - Test bot workflow runs on port 5001 (production on 5000)
-  - Development workflow: Test new features locally → GitHub → Render production deploy
-  - Both bots can run simultaneously for parallel testing
+- **2025-11-23**: Improved access control command (дк) with all 24 commands ✅
+  - Added beautiful colored sections (🔴🟡🟢🔵🟣) for 5 command categories
+  - Shows all commands with their shortcuts and current required rank
+  - Now displays: "дк {команда} {требуемый ранг}" with emoji indicators
+
+- **2025-11-23**: Fixed link filter to not block user mentions ✅
+  - Removed aggressive `@\w+` pattern that was blocking "@username" mentions
+  - Kept only real link patterns: http://, www., t.me/
+  - Added automatic warning system for banned links
+  - Links now auto-warn user and can trigger auto-ban like profanity
 
 - **2025-11-23**: Successfully migrated to Render.com for reliable 24/7 hosting ✅
   - Uploaded code to GitHub repository (qvzv222-dotcom/Anteeq-bot)
   - Created Dockerfile and render.yaml for automatic deployments
   - Deployed Docker container on Render free tier
   - Bot is live at https://anteeq-bot.onrender.com
-  - Removed Flask keep-alive complexity - pure polling is more stable
-  - Bot successfully responding to all commands
   - Environment variables configured: BOT_TOKEN, DATABASE_URL
 
 ## Project Architecture
