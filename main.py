@@ -1341,78 +1341,54 @@ def setup_handlers(application):
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
-# Flask Webhook сервер на порту 5000
+# Flask сервер на порту 5000 для keep-alive
 app = Flask('')
-application = None
 
 @app.route('/')
 def home():
-    return "✅ Bot is running on Webhooks mode!"
+    return "✅ Bot is running on Replit!"
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    """Получает обновления от Telegram через webhook"""
-    try:
-        update_data = request.get_json()
-        if not update_data:
-            return jsonify({"ok": False}), 400
-        
-        # Обработать обновление асинхронно
-        import asyncio
-        asyncio.run(application.process_update(Update.de_json(update_data, application.bot)))
-        return jsonify({"ok": True}), 200
-    except Exception as e:
-        print(f"❌ Webhook error: {str(e)}")
-        return jsonify({"ok": False, "error": str(e)}), 500
+@app.route('/health')
+def health():
+    return {"status": "ok", "timestamp": int(time.time())}, 200
 
 def run_flask():
-    print("🌐 Webhook сервер запущен на http://0.0.0.0:5000")
-    print("📡 Готов получать обновления от Telegram через POST /webhook")
+    print("🌐 Flask keep-alive сервер запущен на http://0.0.0.0:5000")
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
 
-async def setup_webhook(app_instance):
-    """Регистрирует webhook у Telegram API"""
-    try:
-        # Получаем URL из переменной окружения или используем текущий
-        # На Replit это должно быть динамически получено
-        print("⏳ Регистрирую webhook у Telegram...")
-        
-        # Просто удаляем старый webhook если есть и ждём
-        await app_instance.bot.delete_webhook(drop_pending_updates=True)
-        print("✅ Старые webhooks удалены")
-        
-    except Exception as e:
-        print(f"⚠️ Webhook setup warning: {str(e)}")
-
-def main():
-    global application
-    
-    print("Инициализация базы данных...")
-    db.init_database()
-    
-    print("Инициализация бота в режиме WEBHOOK...")
-    application = Application.builder().token(BOT_TOKEN).build()
-    setup_handlers(application)
-    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
-    
-    # Запускаем Flask в отдельном потоке
-    print("Запуск Flask webhook сервера на порту 5000...")
+def start_keep_alive():
+    """Запускает Flask сервер в отдельном потоке"""
     flask_thread = threading.Thread(target=run_flask, daemon=False)
     flask_thread.start()
     time.sleep(1)
+    print("✅ Keep-alive сервер активирован!")
+
+def main():
+    print("Инициализация базы данных...")
+    db.init_database()
     
-    print("✅ Бот готов!")
-    print("✅ Webhook режим активирован - надежная работа на Replit!")
+    print("Инициализация бота в режиме POLLING...")
+    application = Application.builder().token(BOT_TOKEN).build()
+    setup_handlers(application)
+    
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Запускаем Flask сервер
+    print("Запуск keep-alive сервера на порту 5000...")
+    start_keep_alive()
+    
+    print("✅ Бот полностью инициализирован!")
+    print("✅ Polling режим + Flask keep-alive - надежная работа на Replit!")
     print("Добавьте бота в группу и дайте ему права администратора!")
     
-    # Бот будет работать пока Flask слушает webhook'и
-    # Это нужно чтобы программа не заканчивалась
+    # Запускаем polling (получение сообщений от Telegram)
     try:
-        while True:
-            time.sleep(1)
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
     except KeyboardInterrupt:
         print("Бот остановлен")
-        application.stop()
+    except Exception as e:
+        print(f"❌ Ошибка: {str(e)}")
+        time.sleep(5)
 
 if __name__ == '__main__':
     main()
