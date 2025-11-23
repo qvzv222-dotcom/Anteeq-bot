@@ -1539,7 +1539,7 @@ def main():
     db.init_database()
     
     print("Инициализация бота...")
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).job_queue(None).build()
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
