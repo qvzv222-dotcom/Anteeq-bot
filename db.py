@@ -81,6 +81,8 @@ def init_database():
             chat_id BIGINT,
             user_id BIGINT,
             unmute_time TIMESTAMP,
+            mute_reason TEXT DEFAULT '',
+            mute_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (chat_id, user_id),
             FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE
         )
@@ -90,6 +92,8 @@ def init_database():
         CREATE TABLE IF NOT EXISTS bans (
             chat_id BIGINT,
             user_id BIGINT,
+            ban_reason TEXT DEFAULT '',
+            ban_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (chat_id, user_id),
             FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE
         )
@@ -123,234 +127,29 @@ def init_database():
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('ALTER TABLE chats ADD COLUMN IF NOT EXISTS link_posting_rank INT DEFAULT 1')
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        pass
-    
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
         cur.execute('ALTER TABLE chats ADD COLUMN IF NOT EXISTS award_giving_rank INT DEFAULT 3')
+        cur.execute('ALTER TABLE mutes ADD COLUMN IF NOT EXISTS mute_reason TEXT DEFAULT \'\'')
+        cur.execute('ALTER TABLE mutes ADD COLUMN IF NOT EXISTS mute_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+        cur.execute('ALTER TABLE bans ADD COLUMN IF NOT EXISTS ban_reason TEXT DEFAULT \'\'')
+        cur.execute('ALTER TABLE bans ADD COLUMN IF NOT EXISTS ban_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
         conn.commit()
         cur.close()
         conn.close()
-    except Exception as e:
+    except:
         pass
-    
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('ALTER TABLE chat_settings ADD COLUMN IF NOT EXISTS max_warns INT DEFAULT 3')
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        pass
-    
-    print("База данных инициализирована")
 
-def ensure_chat_exists(chat_id: int):
+def set_user_rank(chat_id: int, user_id: int, rank: int):
     try:
         conn = get_connection()
         cur = conn.cursor()
+        
         cur.execute('''
-            INSERT INTO chats (chat_id)
-            VALUES (%s)
-            ON CONFLICT (chat_id) DO NOTHING
-        ''', (chat_id,))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_chat_creator(chat_id: int) -> Optional[int]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT creator_id FROM chats WHERE chat_id = %s', (chat_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result and result[0] else None
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
-
-def set_chat_creator(chat_id: int, creator_id: Optional[int]):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE chats SET creator_id = %s WHERE chat_id = %s', (creator_id, chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_chat_code(chat_id: int) -> Optional[str]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT chat_code FROM chats WHERE chat_id = %s', (chat_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else None
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
-
-def set_chat_code(chat_id: int, chat_code: str):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE chats SET chat_code = %s WHERE chat_id = %s', (chat_code, chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_welcome_message(chat_id: int) -> str:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT welcome_message FROM chats WHERE chat_id = %s', (chat_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        if result and result[0]:
-            return result[0]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-    
-    # Дефолтное красивое приветствие
-    default_welcome = """👋 Привет, новичок!
-
-Добро пожаловать в [***]!
-
-📝 Рекомендуем добавить свой игровой ник. Отправь сообщение:
-+ник свой ник в игре
-
-📋 Обязательно ознакомься с правилами, отправив:
-правила
-
-⚡ КБЗ 40 медалей в неделю - обязательно!
-Проверка каждый понедельник в 12:00 по МСК.
-
-🤝 Общаемся культурно и уважительно!
-Удачи в игре! 🎮"""
-    
-    return default_welcome
-
-def set_welcome_message(chat_id: int, message: str):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE chats SET welcome_message = %s WHERE chat_id = %s', (message, chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_rules(chat_id: int) -> str:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT rules FROM chats WHERE chat_id = %s', (chat_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        if result and result[0]:
-            return result[0]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-    
-    # Дефолтные красивые правила
-    default_rules = """📋 ПРАВИЛА КЛАН-ЧАТА
-
-Клан-чат создан для комфортной игры и приятного общения.
-
-🎯 Норма участия:
-Выполнение КБЗ - 40 медалей/неделю.
-Если нет возможности выполнять КБЗ, необходимо заранее предупредить.
-Отмазки по невыполнению КБЗ не принимаются постфактум.
-
-❌ ЗАПРЕЩЕНО:
-
-1. Любое агрессивное/неадекватное/провокационное поведение, подстрекательство к нарушению правил, разжигание конфликтов. [мут]
-
-2. Флуд (от 3-х сообщений): бессмысленные сообщения (набор букв, капса, стикеров, медиа и т.п.), флуд командами бота и чрезмерное использование реакций. [мут]
-
-3. Использование свастики и других обозначений и/или упоминаний запрещённых организаций и/или движений. [пред]
-
-4. Распространение персональных данных без согласия субъекта. [пред]
-
-5. Обсуждение действий администрации и модераторов чата. [мут]
-
-6. Мошеннические проекты, предложения покупки и продажи игровой валюты в обход официального способа, реклама без согласования с администрацией. [бан]
-
-7. Вызов состава модераторов без причины и ложные теги. [мут]
-
-8. Дискредитация руководящего состава. [мут]
-
-9. Намеренное нарушение и игнорирование замечаний/правил. [пред]
-
-10. Пропаганда и обсуждение наркотиков, алкоголя, табакокурения. [мут]
-
-11. Пропаганда гейства, нетрадиционных ориентаций и т.п. [мут]
-
-12. Обсуждение религии или политики в чате. [мут]
-
-13. Контент не подходящий большей части целевой аудитории (18+). Треш/шок/эротический контент. [пред]
-
-14. Запрещены аккаунты, содержащие любого вида порнографию. [пред]
-
-⚖️ Наказания:
-За нарушение правил руководством будут применяться карательные меры вплоть до исключения из клана.
-Систематическое нарушение правил приведет к ужесточению наказания.
-
-🤝 Желаем вам удачных каток и приятного позитивного общения!"""
-    
-    return default_rules
-
-def set_rules(chat_id: int, rules: str):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE chats SET rules = %s WHERE chat_id = %s', (rules, chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_access_control(chat_id: int) -> Dict[str, int]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT access_control FROM chats WHERE chat_id = %s', (chat_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        if result and result[0]:
-            return result[0]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-    return {"1.1": 1, "1.2": 3, "1.3": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4}
-
-def set_access_control(chat_id: int, access_control: Dict[str, int]):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE chats SET access_control = %s WHERE chat_id = %s', (Json(access_control), chat_id))
+            INSERT INTO admins (chat_id, user_id, rank)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (chat_id, user_id)
+            DO UPDATE SET rank = EXCLUDED.rank
+        ''', (chat_id, user_id, rank))
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -369,52 +168,21 @@ def get_user_rank(chat_id: int, user_id: int) -> int:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return 0
 
-def set_user_rank(chat_id: int, user_id: int, rank: int):
+def set_nick(chat_id: int, user_id: int, nick: str):
     try:
-        ensure_chat_exists(chat_id)
         conn = get_connection()
         cur = conn.cursor()
-        if rank == 0:
-            cur.execute('DELETE FROM admins WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
-        else:
-            cur.execute('''
-                INSERT INTO admins (chat_id, user_id, rank)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (chat_id, user_id) DO UPDATE SET rank = %s
-            ''', (chat_id, user_id, rank, rank))
+        cur.execute('''
+            INSERT INTO nicks (chat_id, user_id, nick)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (chat_id, user_id)
+            DO UPDATE SET nick = EXCLUDED.nick
+        ''', (chat_id, user_id, nick))
         conn.commit()
         cur.close()
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
-
-def get_all_admins(chat_id: int) -> Dict[int, int]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT user_id, rank FROM admins WHERE chat_id = %s', (chat_id,))
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return {user_id: rank for user_id, rank in results}
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return {}
-
-def get_all_members(chat_id: int) -> List[int]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            SELECT DISTINCT user_id FROM admins WHERE chat_id = %s
-            UNION
-            SELECT DISTINCT user_id FROM nicks WHERE chat_id = %s
-        ''', (chat_id, chat_id))
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [user_id for (user_id,) in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
 
 def get_nick(chat_id: int, user_id: int) -> Optional[str]:
     try:
@@ -427,22 +195,6 @@ def get_nick(chat_id: int, user_id: int) -> Optional[str]:
         return result[0] if result else None
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return None
-
-def set_nick(chat_id: int, user_id: int, nick: str):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            INSERT INTO nicks (chat_id, user_id, nick)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (chat_id, user_id) DO UPDATE SET nick = %s
-        ''', (chat_id, user_id, nick, nick))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
 
 def remove_nick(chat_id: int, user_id: int):
     try:
@@ -458,23 +210,22 @@ def remove_nick(chat_id: int, user_id: int):
 def get_all_nicks(chat_id: int) -> Dict[int, str]:
     try:
         conn = get_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute('SELECT user_id, nick FROM nicks WHERE chat_id = %s', (chat_id,))
         results = cur.fetchall()
         cur.close()
         conn.close()
-        return {user_id: nick for user_id, nick in results}
+        return {row['user_id']: row['nick'] for row in results}
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return {}
 
-def add_warn(chat_id: int, user_id: int, from_user_id: int, reason: str):
+def warn_user(chat_id: int, user_id: int, from_user_id: int, reason: str):
     try:
-        ensure_chat_exists(chat_id)
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO warns (chat_id, user_id, from_user_id, reason)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO warns (chat_id, user_id, from_user_id, reason, warn_date)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
         ''', (chat_id, user_id, from_user_id, reason))
         conn.commit()
         cur.close()
@@ -499,7 +250,7 @@ def get_warns(chat_id: int, user_id: int) -> List[Dict[str, Any]]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
 
-def remove_last_warn(chat_id: int, user_id: int):
+def remove_warn(chat_id: int, user_id: int):
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -518,35 +269,61 @@ def remove_last_warn(chat_id: int, user_id: int):
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
 
-def get_warn_count(chat_id: int, user_id: int) -> int:
+def remove_all_warns(chat_id: int, user_id: int):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('SELECT COUNT(*) FROM warns WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else 0
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return 0
-
-def add_ban(chat_id: int, user_id: int):
-    try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            INSERT INTO bans (chat_id, user_id)
-            VALUES (%s, %s)
-            ON CONFLICT DO NOTHING
-        ''', (chat_id, user_id))
+        cur.execute('DELETE FROM warns WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
         conn.commit()
         cur.close()
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
 
-def remove_ban(chat_id: int, user_id: int):
+def mute_user(chat_id: int, user_id: int, until: datetime, reason: str = ''):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO mutes (chat_id, user_id, unmute_time, mute_reason, mute_date)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (chat_id, user_id)
+            DO UPDATE SET unmute_time = EXCLUDED.unmute_time, mute_reason = EXCLUDED.mute_reason
+        ''', (chat_id, user_id, until, reason))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def unmute_user(chat_id: int, user_id: int):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM mutes WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def ban_user(chat_id: int, user_id: int, reason: str = ''):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO bans (chat_id, user_id, ban_reason, ban_date)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (chat_id, user_id)
+            DO UPDATE SET ban_reason = EXCLUDED.ban_reason
+        ''', (chat_id, user_id, reason))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def unban_user(chat_id: int, user_id: int):
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -565,36 +342,142 @@ def is_banned(chat_id: int, user_id: int) -> bool:
         result = cur.fetchone()
         cur.close()
         conn.close()
-        return result is not None
+        return bool(result)
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return False
 
-def set_mute(chat_id: int, user_id: int, unmute_time: datetime):
+def get_all_bans(chat_id: int) -> List[Dict[str, Any]]:
     try:
-        ensure_chat_exists(chat_id)
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT user_id, ban_reason, ban_date FROM bans WHERE chat_id = %s', (chat_id,))
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [dict(row) for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
+def set_chat_creator(chat_id: int, user_id: int):
+    try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('''
-            INSERT INTO mutes (chat_id, user_id, unmute_time)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (chat_id, user_id) DO UPDATE SET unmute_time = %s
-        ''', (chat_id, user_id, unmute_time, unmute_time))
+        cur.execute('UPDATE chats SET creator_id = %s WHERE chat_id = %s', (user_id, chat_id))
         conn.commit()
         cur.close()
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
 
-def remove_mute(chat_id: int, user_id: int):
+def get_chat_creator(chat_id: int) -> Optional[int]:
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('DELETE FROM mutes WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        cur.execute('SELECT creator_id FROM chats WHERE chat_id = %s', (chat_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else None
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return None
+
+def get_warn_count(chat_id: int, user_id: int) -> int:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT COUNT(*) FROM warns WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else 0
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return 0
+
+def set_welcome_message(chat_id: int, message: str):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO chats (chat_id, welcome_message)
+            VALUES (%s, %s)
+            ON CONFLICT (chat_id)
+            DO UPDATE SET welcome_message = EXCLUDED.welcome_message
+        ''', (chat_id, message))
         conn.commit()
         cur.close()
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
+
+def get_welcome_message(chat_id: int) -> str:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT welcome_message FROM chats WHERE chat_id = %s', (chat_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else 'Добро пожаловать!'
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return 'Добро пожаловать!'
+
+def set_rules(chat_id: int, rules: str):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO chats (chat_id, rules)
+            VALUES (%s, %s)
+            ON CONFLICT (chat_id)
+            DO UPDATE SET rules = EXCLUDED.rules
+        ''', (chat_id, rules))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def get_rules(chat_id: int) -> str:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT rules FROM chats WHERE chat_id = %s', (chat_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else 'Правила не установлены'
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return 'Правила не установлены'
+
+def set_access_control(chat_id: int, access_control: Dict):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO chats (chat_id, access_control)
+            VALUES (%s, %s::jsonb)
+            ON CONFLICT (chat_id)
+            DO UPDATE SET access_control = EXCLUDED.access_control
+        ''', (chat_id, json.dumps(access_control)))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def get_access_control(chat_id: int) -> Dict:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT access_control FROM chats WHERE chat_id = %s', (chat_id,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        if result and result[0]:
+            return json.loads(result[0]) if isinstance(result[0], str) else result[0]
+        return {"1.1": 1, "1.2": 1, "1.3": 3, "1.4": 1, "1.5": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4, "7": 1}
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return {"1.1": 1, "1.2": 1, "1.3": 3, "1.4": 1, "1.5": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4, "7": 1}
 
 def get_mute_time(chat_id: int, user_id: int) -> Optional[datetime]:
     try:
@@ -612,10 +495,7 @@ def get_expired_mutes() -> List[tuple]:
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('''
-            SELECT chat_id, user_id FROM mutes
-            WHERE unmute_time <= NOW()
-        ''')
+        cur.execute('SELECT chat_id, user_id FROM mutes WHERE unmute_time < CURRENT_TIMESTAMP')
         results = cur.fetchall()
         cur.close()
         conn.close()
@@ -623,17 +503,19 @@ def get_expired_mutes() -> List[tuple]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
 
-def find_chat_by_code(chat_code: str) -> Optional[int]:
+def set_award(chat_id: int, user_id: int, award_name: str):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('SELECT chat_id FROM chats WHERE chat_code = %s', (chat_code,))
-        result = cur.fetchone()
+        cur.execute('''
+            INSERT INTO awards (chat_id, user_id, award_name, award_date)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+        ''', (chat_id, user_id, award_name))
+        conn.commit()
         cur.close()
         conn.close()
-        return result[0] if result else None
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
+        pass
 
 def get_link_posting_rank(chat_id: int) -> int:
     try:
@@ -649,10 +531,14 @@ def get_link_posting_rank(chat_id: int) -> int:
 
 def set_link_posting_rank(chat_id: int, rank: int):
     try:
-        ensure_chat_exists(chat_id)
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('UPDATE chats SET link_posting_rank = %s WHERE chat_id = %s', (rank, chat_id))
+        cur.execute('''
+            INSERT INTO chats (chat_id, link_posting_rank)
+            VALUES (%s, %s)
+            ON CONFLICT (chat_id)
+            DO UPDATE SET link_posting_rank = EXCLUDED.link_posting_rank
+        ''', (chat_id, rank))
         conn.commit()
         cur.close()
         conn.close()
@@ -673,24 +559,14 @@ def get_award_giving_rank(chat_id: int) -> int:
 
 def set_award_giving_rank(chat_id: int, rank: int):
     try:
-        ensure_chat_exists(chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE chats SET award_giving_rank = %s WHERE chat_id = %s', (rank, chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def add_award(chat_id: int, user_id: int, award_name: str):
-    try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO awards (chat_id, user_id, award_name)
-            VALUES (%s, %s, %s)
-        ''', (chat_id, user_id, award_name))
+            INSERT INTO chats (chat_id, award_giving_rank)
+            VALUES (%s, %s)
+            ON CONFLICT (chat_id)
+            DO UPDATE SET award_giving_rank = EXCLUDED.award_giving_rank
+        ''', (chat_id, rank))
         conn.commit()
         cur.close()
         conn.close()
@@ -704,23 +580,19 @@ def get_user_awards(chat_id: int, user_id: int) -> List[str]:
         cur.execute('''
             SELECT award_name FROM awards
             WHERE chat_id = %s AND user_id = %s
-            ORDER BY award_date DESC
         ''', (chat_id, user_id))
         results = cur.fetchall()
         cur.close()
         conn.close()
-        return [r[0] for r in results]
+        return [result[0] for result in results]
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
 
-def remove_all_awards(chat_id: int, user_id: int):
+def remove_awards(chat_id: int, user_id: int):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('''
-            DELETE FROM awards
-            WHERE chat_id = %s AND user_id = %s
-        ''', (chat_id, user_id))
+        cur.execute('DELETE FROM awards WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -730,51 +602,41 @@ def remove_all_awards(chat_id: int, user_id: int):
 def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
     try:
         conn = get_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute('''
-            SELECT a.user_id, a.rank FROM admins a
-            WHERE a.chat_id = %s
-            ORDER BY a.rank DESC, a.user_id
+            SELECT DISTINCT
+                COALESCE(admins.user_id, nicks.user_id) as user_id,
+                admins.rank,
+                nicks.nick
+            FROM admins
+            FULL OUTER JOIN nicks ON admins.user_id = nicks.user_id AND admins.chat_id = nicks.chat_id
+            WHERE admins.chat_id = %s OR nicks.chat_id = %s
+        ''', (chat_id, chat_id))
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [dict(row) for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
+def get_all_awards(chat_id: int) -> Dict[int, str]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('''
+            SELECT user_id, STRING_AGG(award_name, ', ') as awards
+            FROM awards
+            WHERE chat_id = %s
+            GROUP BY user_id
         ''', (chat_id,))
         results = cur.fetchall()
         cur.close()
         conn.close()
-        
-        users = []
-        for user_id, rank in results:
-            nick = get_nick(chat_id, user_id)
-            awards = get_user_awards(chat_id, user_id)
-            users.append({
-                'user_id': user_id,
-                'rank': rank,
-                'nick': nick,
-                'awards': awards
-            })
-        
-        return users
+        return {row['user_id']: row['awards'] for row in results}
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
+        return {}
 
-def import_chat_settings(target_chat_id: int, source_chat_id: int):
-    try:
-        ensure_chat_exists(target_chat_id)
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            UPDATE chats
-            SET welcome_message = src.welcome_message,
-                rules = src.rules,
-                access_control = src.access_control
-            FROM (SELECT welcome_message, rules, access_control FROM chats WHERE chat_id = %s) AS src
-            WHERE chat_id = %s
-        ''', (source_chat_id, target_chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def is_profanity_filter_enabled(chat_id: int) -> bool:
+def get_profanity_filter_status(chat_id: int) -> bool:
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -786,16 +648,16 @@ def is_profanity_filter_enabled(chat_id: int) -> bool:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return True
 
-def set_profanity_filter_enabled(chat_id: int, enabled: bool):
+def set_profanity_filter(chat_id: int, enabled: bool):
     try:
-        ensure_chat_exists(chat_id)
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
             INSERT INTO chat_settings (chat_id, profanity_filter_enabled)
             VALUES (%s, %s)
-            ON CONFLICT (chat_id) DO UPDATE SET profanity_filter_enabled = %s
-        ''', (chat_id, enabled, enabled))
+            ON CONFLICT (chat_id)
+            DO UPDATE SET profanity_filter_enabled = EXCLUDED.profanity_filter_enabled
+        ''', (chat_id, enabled))
         conn.commit()
         cur.close()
         conn.close()
@@ -816,25 +678,14 @@ def get_max_warns(chat_id: int) -> int:
 
 def set_max_warns(chat_id: int, max_warns: int):
     try:
-        ensure_chat_exists(chat_id)
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO chat_settings (chat_id, max_warns, profanity_filter_enabled)
-            VALUES (%s, %s, TRUE)
-            ON CONFLICT (chat_id) DO UPDATE SET max_warns = EXCLUDED.max_warns
+            INSERT INTO chat_settings (chat_id, max_warns)
+            VALUES (%s, %s)
+            ON CONFLICT (chat_id)
+            DO UPDATE SET max_warns = EXCLUDED.max_warns
         ''', (chat_id, max_warns))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
-        pass
-
-def remove_all_warns(chat_id: int, user_id: int):
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('DELETE FROM warns WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -879,3 +730,42 @@ def get_highest_warn_giver_rank(chat_id: int, user_id: int) -> int:
         return max_rank
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return 0
+
+def get_moderation_log(chat_id: int) -> List[Dict[str, Any]]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute('''
+            SELECT 
+                user_id, 
+                'предупреждение' as punishment_type, 
+                reason as punishment_reason, 
+                warn_date as punishment_date
+            FROM warns
+            WHERE chat_id = %s
+            UNION ALL
+            SELECT 
+                user_id,
+                'мут' as punishment_type,
+                mute_reason as punishment_reason,
+                mute_date as punishment_date
+            FROM mutes
+            WHERE chat_id = %s
+            UNION ALL
+            SELECT 
+                user_id,
+                'бан' as punishment_type,
+                ban_reason as punishment_reason,
+                ban_date as punishment_date
+            FROM bans
+            WHERE chat_id = %s
+            ORDER BY punishment_date DESC
+        ''', (chat_id, chat_id, chat_id))
+        
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [dict(row) for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
