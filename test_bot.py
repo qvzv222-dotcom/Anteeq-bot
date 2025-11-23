@@ -1542,7 +1542,7 @@ def main():
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
     # Добавляем фоновую задачу для проверки истекших мутов
-    application.job_queue.run_repeating(check_expired_mutes, interval=60, first=10)
+    application.job_queue.run_repeating(check_expired_mutes, interval=10, first=10)
     
     print("✅ Бот инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
