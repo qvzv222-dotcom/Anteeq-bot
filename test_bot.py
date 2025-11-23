@@ -786,11 +786,46 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'бан [причина]'")
-        return
+    text = update.message.text.strip()
+    parts = text.split(maxsplit=1)
+    
+    target_user = None
+    reason = "Причина не указана"
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        reason = parts[1] if len(parts) > 1 else "Причина не указана"
+    else:
+        if len(parts) < 2:
+            await update.message.reply_text("Использование: бан @username [причина]\nИли ответьте на сообщение и напишите: бан [причина]")
+            return
+        
+        username_or_id = parts[1].split()[0]
+        try:
+            if username_or_id.isdigit():
+                target_id = int(username_or_id)
+            else:
+                username = username_or_id.lstrip('@')
+                try:
+                    member = await context.bot.get_chat_member(chat_id, f"@{username}")
+                    target_id = member.user.id
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            
+            member = await context.bot.get_chat_member(chat_id, target_id)
+            target_user = member.user
+            
+            reason_text = parts[1].split(maxsplit=1)
+            if len(reason_text) > 1:
+                reason = reason_text[1]
+        except Exception as e:
+            await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+            return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("❌ Не удалось получить информацию о пользователе")
+        return
 
     if target_user.id == user_id:
         await update.message.reply_text("❌ Вы не можете банить себя", parse_mode='HTML')
@@ -799,10 +834,6 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if target_user.id == context.bot.id:
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
-
-    text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
-    reason = parts[1] if len(parts) > 1 else "Причина не указана"
 
     db.ban_user(chat_id, target_user.id, reason)
 
@@ -879,11 +910,68 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'мут [время] [с/м]'\nПример: мут 10 с (10 секунд) или мут 5 м (5 минут)")
-        return
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    target_user = None
+    duration = 60
+    unit = "минут"
+    reason_start = 1
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        if len(parts) > 1:
+            try:
+                duration = int(parts[1])
+                if len(parts) > 2:
+                    suffix = parts[2].lower()
+                    if suffix in ['с', 'сек', 'секунд']:
+                        unit = "секунд"
+                    elif suffix in ['м', 'мин', 'минут']:
+                        unit = "минут"
+                reason_start = 3
+            except ValueError:
+                pass
+    else:
+        if len(parts) < 2:
+            await update.message.reply_text("Использование: мут @username 10 м [причина]\nИли ответьте на сообщение и напишите: мут 10 м")
+            return
+        
+        username_or_id = parts[1]
+        try:
+            if username_or_id.isdigit():
+                target_id = int(username_or_id)
+            else:
+                username = username_or_id.lstrip('@')
+                try:
+                    member = await context.bot.get_chat_member(chat_id, f"@{username}")
+                    target_id = member.user.id
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            
+            member = await context.bot.get_chat_member(chat_id, target_id)
+            target_user = member.user
+            
+            if len(parts) > 2:
+                try:
+                    duration = int(parts[2])
+                    if len(parts) > 3:
+                        suffix = parts[3].lower()
+                        if suffix in ['с', 'сек', 'секунд']:
+                            unit = "секунд"
+                        elif suffix in ['м', 'мин', 'минут']:
+                            unit = "минут"
+                    reason_start = 4
+                except ValueError:
+                    reason_start = 2
+        except Exception as e:
+            await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+            return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("❌ Не удалось получить информацию о пользователе")
+        return
 
     if target_user.id == user_id:
         await update.message.reply_text("❌ Вы не можете мутить себя", parse_mode='HTML')
@@ -893,35 +981,12 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    text = update.message.text.strip()
-    parts = text.split()
-    
-    duration = 60
-    unit = "минут"
-    
-    if len(parts) > 1:
-        try:
-            duration = int(parts[1])
-            if len(parts) > 2:
-                suffix = parts[2].lower()
-                if suffix in ['с', 'сек', 'секунд']:
-                    duration = duration
-                    unit = "секунд"
-                elif suffix in ['м', 'мин', 'минут']:
-                    duration = duration
-                    unit = "минут"
-            else:
-                unit = "минут"
-        except ValueError:
-            duration = 60
-            unit = "минут"
-
     if unit == "секунд":
         unmute_time = datetime.now() + timedelta(seconds=duration)
     else:
         unmute_time = datetime.now() + timedelta(minutes=duration)
     
-    reason = "Временное ограничение сообщений"
+    reason = " ".join(parts[reason_start:]) if reason_start < len(parts) else "Временное ограничение сообщений"
     db.mute_user(chat_id, target_user.id, unmute_time, reason)
 
     try:
@@ -933,7 +998,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(
-            f"{user_link} замучен на {duration} {unit}",
+            f"{user_link} замучен на {duration} {unit}\nПричина: {reason}",
             parse_mode='HTML'
         )
     except Exception as e:
