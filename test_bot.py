@@ -978,6 +978,11 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif len(parts) >= 4:
         user_id_input = parts[1]
         
+        # Проверяем, не пытается ли пользователь использовать username
+        if user_id_input.startswith('@'):
+            await update.message.reply_text("❌ Используйте числовой ID, а не @username\nПример: мут 123456789 5 с причина")
+            return
+        
         # Парсим параметры
         try:
             duration = int(parts[2])
@@ -995,13 +1000,17 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Ищем пользователя по ID
         try:
-            member = await context.bot.get_chat_member(chat_id, int(user_id_input))
+            user_id_int = int(user_id_input)
+            member = await context.bot.get_chat_member(chat_id, user_id_int)
             target_user = member.user
+        except ValueError:
+            await update.message.reply_text(f"❌ ID должно быть числом (например: 123456789)")
+            return
         except:
             await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
             return
     else:
-        await update.message.reply_text("Использование: мут USER_ID 5 с флуд\n(где USER_ID - ID пользователя)\nИли ответьте на сообщение: мут 5 м")
+        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По ID: мут 123456789 5 с причина")
         return
 
     if not target_user:
