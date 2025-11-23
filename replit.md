@@ -1,15 +1,17 @@
 # Telegram Chat Administration Bot
 
 ## Overview
-A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Replit with polling-based architecture and Flask keep-alive.
+A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
 
 ## Recent Changes
-- **2025-11-23**: Implemented reliable 24/7 uptime solution
-  - Switched from aggressive pinging to polling + Flask keep-alive hybrid architecture
-  - Flask server on port 5000 with `/health` endpoint for UptimeRobot monitoring
-  - Removed webhook complexity - polling is more stable on Replit free tier
-  - Added pyngrok support for future ngrok integration if needed
-  - Command "кто создатель" displays chat creator with clickable profile link
+- **2025-11-23**: Successfully migrated to Render.com for reliable 24/7 hosting ✅
+  - Uploaded code to GitHub repository (qvzv222-dotcom/Anteeq-bot)
+  - Created Dockerfile and render.yaml for automatic deployments
+  - Deployed Docker container on Render free tier
+  - Bot is live at https://anteeq-bot.onrender.com
+  - Removed Flask keep-alive complexity - pure polling is more stable
+  - Bot successfully responding to all commands
+  - Environment variables configured: BOT_TOKEN, DATABASE_URL
 
 - **2025-11-22**: Enhanced keep-alive mechanism
   - Added aggressive background pinger thread (every 30 seconds)
