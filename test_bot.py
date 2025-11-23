@@ -1418,6 +1418,7 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
         return
     
     log_data = db.get_moderation_log(chat_id)
+    logging.info(f"DEBUG: get_moderation_log returned {len(log_data) if log_data else 0} records for chat {chat_id}")
     
     if not log_data:
         await update.message.reply_text("📋 История наказаний пуста")
