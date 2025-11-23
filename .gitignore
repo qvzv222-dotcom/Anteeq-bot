@@ -29,3 +29,6 @@ env/
 *.swo
 *~
 .DS_Store
+attached_assets/
+.env
+.env.local
