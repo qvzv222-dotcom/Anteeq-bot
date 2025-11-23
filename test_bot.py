@@ -974,7 +974,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except ValueError:
                 pass
     
-    # Вариант 2: По user_id или @username - мут 123456789 5 с причина или мут @username 5 с причина
+    # Вариант 2: По user_id - мут 123456789 5 с причина
     elif len(parts) >= 4:
         user_id_input = parts[1]
         
@@ -993,30 +993,39 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Ошибка: неверный формат")
             return
         
-        # Ищем пользователя по ID или @username
-        is_username = user_id_input.startswith('@')
+        # Проверяем, не пытается ли пользователь использовать @username
+        if user_id_input.startswith('@'):
+            await update.message.reply_text(f"❌ @username не поддерживается (ограничение Telegram API)\n\n💡 Вместо этого:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ Используйте числовой ID: мут 123456789 5 с причина\n\n📱 Как узнать ID: пересчитайте на сообщение пользователя и используйте его ID")
+            return
         
-        if is_username:
-            # Для username - используем напрямую, без get_chat_member (он не поддерживает usernames)
-            target_user = None
-            lookup_id = user_id_input
-        else:
-            # Для числового ID - ищем информацию о пользователе
-            try:
-                lookup_id = int(user_id_input)
-            except ValueError:
-                await update.message.reply_text(f"❌ Используйте либо @username либо числовой ID\nПримеры: мут @Dfgfxjr 5 с флуд  или  мут 123456789 5 с причина")
-                return
-            
-            # Получаем информацию о пользователе
-            try:
-                member = await context.bot.get_chat_member(chat_id, lookup_id)
-                target_user = member.user
-            except Exception as e:
-                await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
-                return
+        # Ищем пользователя по числовому ID
+        try:
+            lookup_id = int(user_id_input)
+        except ValueError:
+            await update.message.reply_text(f"❌ ID должно быть числом (например: 123456789)")
+            return
+        
+        # Получаем информацию о пользователе
+        try:
+            member = await context.bot.get_chat_member(chat_id, lookup_id)
+            target_user = member.user
+        except Exception as e:
+            await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
+            return
     else:
-        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По @username: мут @Dfgfxjr 5 с причина\n3️⃣ По ID: мут 123456789 5 с причина")
+        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По ID: мут 123456789 5 с причина")
+        return
+
+    if not target_user:
+        await update.message.reply_text("❌ Не удалось получить информацию о пользователе")
+        return
+
+    if target_user.id == user_id:
+        await update.message.reply_text("❌ Вы не можете мутить себя", parse_mode='HTML')
+        return
+
+    if target_user.id == context.bot.id:
+        await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
     if unit == "секунд":
@@ -1024,65 +1033,22 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         unmute_time = datetime.now() + timedelta(minutes=duration)
     
-    # Для username - используем его напрямую в restrict_chat_member
-    if is_username:
-        try:
-            # Telegram API требует username БЕЗ символа @
-            username_without_at = lookup_id.lstrip('@')
-            await context.bot.restrict_chat_member(
-                chat_id, 
-                username_without_at,  # username БЕЗ @
-                permissions=ChatPermissions(can_send_messages=False),
-                until_date=unmute_time
-            )
-            # Пытаемся получить информацию о пользователе после успешного мута для логирования
-            try:
-                member = await context.bot.get_chat_member(chat_id, username_without_at)
-                user_id_for_db = member.user.id
-                user_link = f"<a href='tg://user?id={user_id_for_db}'>{member.user.first_name or lookup_id}</a>"
-            except:
-                user_link = lookup_id
-                user_id_for_db = None
-            
-            if user_id_for_db:
-                db.mute_user(chat_id, user_id_for_db, unmute_time, reason)
-            
-            await update.message.reply_text(
-                f"{user_link} замучен на {duration} {unit}\nПричина: {reason}",
-                parse_mode='HTML'
-            )
-        except Exception as e:
-            await update.message.reply_text(f"❌ Ошибка при муте {user_id_input}: {str(e)}")
-    else:
-        # Для числового ID
-        if not target_user:
-            await update.message.reply_text("❌ Не удалось получить информацию о пользователе")
-            return
+    db.mute_user(chat_id, target_user.id, unmute_time, reason)
 
-        if target_user.id == user_id:
-            await update.message.reply_text("❌ Вы не можете мутить себя", parse_mode='HTML')
-            return
-
-        if target_user.id == context.bot.id:
-            await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
-            return
-
-        db.mute_user(chat_id, target_user.id, unmute_time, reason)
-
-        try:
-            await context.bot.restrict_chat_member(
-                chat_id, 
-                target_user.id,
-                permissions=ChatPermissions(can_send_messages=False),
-                until_date=unmute_time
-            )
-            user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
-            await update.message.reply_text(
-                f"{user_link} замучен на {duration} {unit}\nПричина: {reason}",
-                parse_mode='HTML'
-            )
-        except Exception as e:
-            await update.message.reply_text(f"Ошибка при муте: {str(e)}")
+    try:
+        await context.bot.restrict_chat_member(
+            chat_id, 
+            target_user.id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=unmute_time
+        )
+        user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+        await update.message.reply_text(
+            f"{user_link} замучен на {duration} {unit}\nПричина: {reason}",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при муте: {str(e)}")
 
 async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
