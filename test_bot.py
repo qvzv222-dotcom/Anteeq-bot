@@ -582,44 +582,83 @@ async def set_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    user_rank = db.get_user_rank(chat_id, user_id)
 
     if not has_access(chat_id, user_id, "1.4"):
-        await update.message.reply_text("Недостаточно прав")
+        await update.message.reply_text("❌ Недостаточно прав для выдачи предупреждений")
         return
 
-    target_user = None
     text = update.message.text.strip()
     parts = text.split(maxsplit=1)
-    reason = parts[1] if len(parts) > 1 else "Причина не указана"
-
+    
+    target_user = None
+    reason = "Причина не указана"
+    
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
+        reason = parts[1] if len(parts) > 1 else "Причина не указана"
+    else:
+        if len(parts) < 2:
+            await update.message.reply_text("Использование: варн @username [причина]\nИли ответьте на сообщение и напишите: варн [причина]")
+            return
+        
+        username_or_id = parts[1].split()[0]
+        try:
+            if username_or_id.isdigit():
+                target_id = int(username_or_id)
+            else:
+                username = username_or_id.lstrip('@')
+                try:
+                    member = await context.bot.get_chat_member(chat_id, f"@{username}")
+                    target_id = member.user.id
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            
+            member = await context.bot.get_chat_member(chat_id, target_id)
+            target_user = member.user
+            
+            reason_text = parts[1].split(maxsplit=1)
+            if len(reason_text) > 1:
+                reason = reason_text[1]
+        except Exception as e:
+            await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+            return
 
     if not target_user:
-        await update.message.reply_text("Использование: ответом на сообщение 'варн [причина]'")
+        await update.message.reply_text("❌ Не удалось получить информацию о пользователе")
         return
 
     if target_user.id == user_id:
-        await update.message.reply_text("❌ Вы не можете давать предупреждения себе", parse_mode='HTML')
+        await update.message.reply_text("❌ Вы не можете предупредить себя", parse_mode='HTML')
         return
 
     if target_user.id == context.bot.id:
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    db.add_warn(chat_id, target_user.id, user_id, reason)
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
+
+    if not is_creator and user_rank <= target_rank:
+        await update.message.reply_text("❌ Вы не можете предупредить пользователя с рангом равным или выше вашего")
+        return
+
+    db.warn_user(chat_id, target_user.id, user_id, reason)
     warn_count = db.get_warn_count(chat_id, target_user.id)
+    max_warns = db.get_max_warns(chat_id)
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
 
-    if warn_count >= 3:
-        db.add_ban(chat_id, target_user.id)
+    if warn_count >= max_warns:
+        db.ban_user(chat_id, target_user.id, reason)
         await update.message.reply_text(
-            f"{user_link} получил 3 предупреждения и был забанен",
+            f"{user_link} получил {warn_count} предупреждений и был забанен",
             parse_mode='HTML'
         )
     else:
         await update.message.reply_text(
-            f"{user_link} получил предупреждение ({warn_count}/3)\nПричина: {reason}",
+            f"{user_link} получил предупреждение ({warn_count}/{max_warns})\nПричина: {reason}",
             parse_mode='HTML'
         )
 
