@@ -768,5 +768,7 @@ def get_moderation_log(chat_id: int) -> List[Dict[str, Any]]:
         cur.close()
         conn.close()
         return [dict(row) for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+    except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
+        import logging
+        logging.error(f"ERROR in get_moderation_log for chat {chat_id}: {str(e)}")
         return []
