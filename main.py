@@ -956,6 +956,9 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
+    if not reason or reason == "Временное ограничение сообщений":
+        reason = "Шоб не втыкал"
+
     db.mute_user(chat_id, target_user.id, reason)
 
     try:
