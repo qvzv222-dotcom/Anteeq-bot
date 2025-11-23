@@ -13,8 +13,6 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-from flask import Flask
-
 import db
 from profanity_list import contains_profanity
 
@@ -1341,47 +1339,19 @@ def setup_handlers(application):
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
-# Flask сервер на порту 5000 для keep-alive
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "✅ Bot is running!"
-
-@app.route('/health')
-def health():
-    return {"status": "ok"}, 200
-
-def run_flask():
-    print("🌐 Flask keep-alive сервер запущен на http://0.0.0.0:5000")
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-
-def start_keep_alive():
-    """Запускает Flask сервер в отдельном потоке"""
-    flask_thread = threading.Thread(target=run_flask, daemon=False)
-    flask_thread.start()
-    time.sleep(1)
-    print("✅ Keep-alive сервер активирован!")
-
 def main():
     print("Инициализация базы данных...")
     db.init_database()
     
-    print("Инициализация бота в режиме POLLING...")
+    print("Инициализация бота...")
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
-    # Запускаем Flask сервер
-    print("Запуск keep-alive сервера на порту 5000...")
-    start_keep_alive()
-    
-    print("✅ Бот полностью инициализирован!")
-    print("✅ Polling режим + Flask keep-alive - надежная работа на Replit!")
+    print("✅ Бот инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
     
-    # Запускаем polling (получение сообщений от Telegram)
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
     except KeyboardInterrupt:
