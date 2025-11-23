@@ -605,19 +605,24 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    db.add_warn(chat_id, target_user.id, user_id, reason)
+    db.warn_user(chat_id, target_user.id, user_id, reason)
     warn_count = db.get_warn_count(chat_id, target_user.id)
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
+    max_warns = db.get_max_warns(chat_id)
 
-    if warn_count >= 3:
-        db.add_ban(chat_id, target_user.id)
+    if warn_count >= max_warns:
+        db.ban_user(chat_id, target_user.id, reason)
+        try:
+            await context.bot.ban_chat_member(chat_id, target_user.id)
+        except:
+            pass
         await update.message.reply_text(
-            f"{user_link} получил 3 предупреждения и был забанен",
+            f"{user_link} получил {warn_count} предупреждений и был забанен",
             parse_mode='HTML'
         )
     else:
         await update.message.reply_text(
-            f"{user_link} получил предупреждение ({warn_count}/3)\nПричина: {reason}",
+            f"{user_link} получил предупреждение ({warn_count}/{max_warns})\nПричина: {reason}",
             parse_mode='HTML'
         )
 
@@ -768,7 +773,7 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.remove_all_warns(chat_id, target_user.id)
     
     if db.is_banned(chat_id, target_user.id):
-        db.remove_ban(chat_id, target_user.id)
+        db.unban_user(chat_id, target_user.id)
 
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
     await update.message.reply_text(
@@ -830,7 +835,7 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target_user = update.message.reply_to_message.from_user
 
-    db.remove_ban(chat_id, target_user.id)
+    db.unban_user(chat_id, target_user.id)
 
     try:
         await context.bot.unban_chat_member(chat_id, target_user.id)
@@ -1176,14 +1181,18 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.delete()
         
-        db.add_warn(chat_id, user_id, chat_id, "Использование нецензурной лексики")
+        db.warn_user(chat_id, user_id, chat_id, "Использование нецензурной лексики")
         
         warns = db.get_warns(chat_id, user_id)
         warn_count = len(warns) if warns else 0
         max_warns = db.get_max_warns(chat_id)
         
         if warn_count >= max_warns:
-            db.add_ban(chat_id, user_id)
+            db.ban_user(chat_id, user_id, "Автобан за мат")
+            try:
+                await context.bot.ban_chat_member(chat_id, user_id)
+            except:
+                pass
             await context.bot.send_message(
                 chat_id,
                 f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count}+ предупреждения)"
