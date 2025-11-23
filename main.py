@@ -1342,7 +1342,7 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text("📋 История наказаний пуста")
         return
     
-    log_text = "📋 <b>ЖУРНАЛ МОДЕРАЦИИ</b>\n\n"
+    log_text = "📋 <b>ЖУРНАЛ НАКАЗАНИЙ</b>\n\n"
     
     for record in log_data[:50]:
         user_id_punished = record['user_id']

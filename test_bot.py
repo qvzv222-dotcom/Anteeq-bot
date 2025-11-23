@@ -1432,7 +1432,7 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
         date_str = record['punishment_date'].strftime("%d.%m") if record['punishment_date'] else "?"
         lines.append(f"{emoji} {record['user_id']} | {reason} | {date_str}")
     
-    log_text = "📋 <b>ЖУРНАЛ МОДЕРАЦИИ</b>\n" + "\n".join(lines)
+    log_text = "📋 <b>ЖУРНАЛ НАКАЗАНИЙ</b>\n" + "\n".join(lines)
     if len(log_data) > 50:
         log_text += f"\n... +{len(log_data) - 50}"
     
