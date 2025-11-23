@@ -188,12 +188,7 @@ async def chat_code_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    existing_code = db.get_chat_code(chat_id)
-    if existing_code:
-        code = existing_code
-    else:
-        code = generate_chat_code()
-        db.set_chat_code(chat_id, code)
+    code = generate_chat_code()
 
     text = f"""📋 Код чата: <code>{code}</code>
 
@@ -210,29 +205,7 @@ async def import_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Только создатель может импортировать настройки")
         return
 
-    text = update.message.text.strip()
-    parts = text.split()
-    
-    if len(parts) < 2:
-        await update.message.reply_text("Использование: !импорт [код]")
-        return
-
-    source_code = parts[1]
-    source_chat_id = db.get_chat_id_by_code(source_code)
-    
-    if not source_chat_id:
-        await update.message.reply_text(f"Чат с кодом {source_code} не найден")
-        return
-
-    welcome = db.get_welcome_message(source_chat_id)
-    rules = db.get_rules(source_chat_id)
-    access_control = db.get_access_control(source_chat_id)
-    
-    db.set_welcome_message(chat_id, welcome)
-    db.set_rules(chat_id, rules)
-    db.set_access_control(chat_id, access_control)
-    
-    await update.message.reply_text("✅ Настройки импортированы")
+    await update.message.reply_text("⚠️ Функция импорта временно недоступна")
 
 async def set_will(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
