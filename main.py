@@ -902,14 +902,9 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except ValueError:
                 pass
     
-    # Вариант 2: По user_id (ID пользователя) - мут 123456789 5 с причина
+    # Вариант 2: По user_id или @username - мут 123456789 5 с причина или мут @username 5 с причина
     elif len(parts) >= 4:
         user_id_input = parts[1]
-        
-        # Проверяем, не пытается ли пользователь использовать username
-        if user_id_input.startswith('@'):
-            await update.message.reply_text("❌ Используйте числовой ID, а не @username\nПример: мут 123456789 5 с причина")
-            return
         
         # Парсим параметры
         try:
@@ -926,19 +921,29 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Ошибка: неверный формат")
             return
         
-        # Ищем пользователя по ID
+        # Ищем пользователя по ID или @username
         try:
-            user_id_int = int(user_id_input)
-            member = await context.bot.get_chat_member(chat_id, user_id_int)
+            # Если это username (@xxx)
+            if user_id_input.startswith('@'):
+                username = user_id_input  # Оставляем @ для API
+            else:
+                # Пытаемся конвертировать в число
+                try:
+                    username = int(user_id_input)
+                except ValueError:
+                    await update.message.reply_text(f"❌ Используйте либо @username либо числовой ID\nПримеры: мут @Dfgfxjr 5 с флуд  или  мут 123456789 5 с причина")
+                    return
+            
+            member = await context.bot.get_chat_member(chat_id, username)
             target_user = member.user
-        except ValueError:
-            await update.message.reply_text(f"❌ ID должно быть числом (например: 123456789)")
-            return
-        except:
-            await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
+        except Exception as e:
+            if user_id_input.startswith('@'):
+                await update.message.reply_text(f"❌ Пользователь {user_id_input} не найден в чате")
+            else:
+                await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
             return
     else:
-        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По ID: мут 123456789 5 с причина")
+        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По @username: мут @Dfgfxjr 5 с причина\n3️⃣ По ID: мут 123456789 5 с причина")
         return
 
     if not target_user:
