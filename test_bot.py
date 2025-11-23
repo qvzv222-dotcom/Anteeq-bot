@@ -1418,38 +1418,23 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
         return
     
     log_data = db.get_moderation_log(chat_id)
-    logging.info(f"DEBUG: get_moderation_log returned {len(log_data) if log_data else 0} records for chat {chat_id}")
     
     if not log_data:
         await update.message.reply_text("📋 История наказаний пуста")
         return
     
-    log_text = "📋 <b>ЖУРНАЛ МОДЕРАЦИИ</b>\n\n"
+    lines = []
+    type_emoji = {'предупреждение': '⚠️', 'мут': '🤐', 'бан': '🚫'}
     
     for record in log_data[:50]:
-        user_id_punished = record['user_id']
-        punishment_type = record['punishment_type']
-        reason = record['punishment_reason'] or "Не указана"
-        date = record['punishment_date']
-        
-        if date:
-            formatted_date = date.strftime("%d.%m.%Y %H:%M")
-        else:
-            formatted_date = "Неизвестно"
-        
-        type_emoji = {
-            'предупреждение': '⚠️',
-            'мут': '🤐',
-            'бан': '🚫'
-        }.get(punishment_type, '📌')
-        
-        log_text += f"{type_emoji} <b>{punishment_type.capitalize()}</b>\n"
-        log_text += f"👤 ID: {user_id_punished}\n"
-        log_text += f"📝 Причина: {reason}\n"
-        log_text += f"🕐 Дата: {formatted_date}\n\n"
+        emoji = type_emoji.get(record['punishment_type'], '📌')
+        reason = (record['punishment_reason'] or "—")[:20]
+        date_str = record['punishment_date'].strftime("%d.%m") if record['punishment_date'] else "?"
+        lines.append(f"{emoji} {record['user_id']} | {reason} | {date_str}")
     
+    log_text = "📋 <b>ЖУРНАЛ МОДЕРАЦИИ</b>\n" + "\n".join(lines)
     if len(log_data) > 50:
-        log_text += f"... и ещё {len(log_data) - 50} записей"
+        log_text += f"\n... +{len(log_data) - 50}"
     
     await update.message.reply_text(log_text, parse_mode='HTML')
 
