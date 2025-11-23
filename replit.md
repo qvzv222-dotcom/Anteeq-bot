@@ -100,43 +100,88 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 
 ## Command List (Russian-language)
 
-### Admin Commands
-- `админы` - Show all administrators
-- `кто создатель` - Show chat creator
-- `сбор` - Ping all members ("gather")
-- `назначить @user X` - Set user rank (0-5)
-- `варн @user [reason]` - Warn user (auto-ban at 3)
-- `мут @user [duration]` - Mute user for duration
-- `бан @user [reason]` - Ban user permanently
-- `кик @user` - Kick user from chat
+### System Commands
+- `/start` - Start bot (private chat only)
+- `помощь` or `команды` - Show help with inline buttons
+- `кто ты` - Bot response: "Шо"
+- `кто я` - Show your profile info
 
-### User Commands
-- `+ник my_nickname` - Set your nickname
+### 👤 Nickname Management (Ранг 2.1)
+- `+ник [nickname]` - Set your nickname
 - `-ник` - Remove your nickname
-- `ник [@user]` - Check your or another user's nickname
-- `ники` - List all nicknames in chat
-- `профиль` - Show your profile with rank and stats
+- `ник` - Check your current nickname
+- `ник [@user]` - Check another user's nickname
+- `ники` - List all nicknames in chat with clickable links
+- `+ник другому [nickname]` - Set nickname for another user (reply required)
+- `-ник другому` - Remove nickname from another user (reply required)
+
+### ⚠️ Warning System (Ранг 1.1 - варн, 1.2 - мут/размут, 1.3 - бан/кик)
+- `преды` - Show your warnings
+- `преды [кол-во]` - Show warnings for replied user
+- `варн [reason]` - Warn user (reply required, auto-ban at 3 warnings)
+- `снять варн` - Remove last warning from user (reply required)
+- `снять пред` - Alias for removing warning
+- `снять все варны` - Remove all warnings from user (reply required)
+- `мут [duration] [unit] [reason]` - Mute user permanently (reply required)
+- `размут` - Unmute user (reply required)
+- `говори` - Alias for unmuting
+- `бан [reason]` - Ban user permanently (reply required)
+- `разбан` - Unban user (reply required)
+- `кик` - Kick user from chat (reply required)
+
+### 📋 Chat Settings (Ранг 3.2 - приветствие, 3.3 - правила, 3.4 - роли)
 - `правила` - Show chat rules
+- `+правила [text]` - Set chat rules (admin only)
 - `приветствие` - Show welcome message
+- `+приветствие [text]` - Set welcome message (admin only)
+- `!код чата` - Generate chat backup code (admin only, ранг 3.5)
+- `!импорт [code]` - Import chat settings (creator only, currently unavailable)
 
-### Moderation Commands
-- `+маты` - Enable profanity filter
-- `-маты` - Disable profanity filter
-- `!преды X` - Set max warnings before auto-ban (default 3)
-- `снять варн @user` - Remove warning
-- `снять все варны @user` - Remove all warnings
+### 👑 Administration (Ранг 3 and above)
+- `администраторы` or `админы` - List all admins with ranks
+- `кто создатель` - Show chat creator with profile link
+- `сбор` - Ping all chat members (gather command)
+- `назначить [rank]` - Assign rank to user (0-5, reply required, ранг 1.3)
+- `!завещание [@user]` - Transfer creator status to user (creator only)
+- `-завещание` - Remove creator status (creator only)
+- `дк` - Show access control settings (ранг 3.7)
+- `дк [section] [rank]` - Change access control for specific command section
 
-### Settings Commands
-- `+правила [text]` - Set chat rules
-- `+приветствие [text]` - Set welcome message
-- `!код чата` - Get chat backup code
-- `!импорт [code]` - Import chat settings
-- `!завещание [@user]` - Set rank inheritance for when you leave
+### 🎁 Reward System (Ранг 4)
+- `!наградить @user [award_name]` - Give award to user (reply required)
+- `!снять награды` - Remove all awards from user (reply required)
+- `Наградной список` - Show all users with awards
 
-### Reward Commands
-- `!наградить @user [award_name]` - Give award to user
-- `!снять награды @user` - Remove all awards
-- `Наградной список` - Show participants with awards
+### 🚫 Moderation Filters
+- `+маты` - Enable profanity filter (ранг 3.8)
+- `-маты` - Disable profanity filter (ранг 3.8)
+- `!преды [number]` - Set max warnings before auto-ban (default 3, ранг 3.8)
+
+### 📊 History & Logs (Ранг 3.6)
+- `история наказаний` - Show full chat punishment journal (chat-wide)
+- `очистить историю наказаний` - Clear entire punishment history (creator only)
+- `наказания` - Show your personal punishment history (any user)
+
+### 🔒 Access Control (ДК) Sections
+Access levels 0-5: Участник → Модератор → Наборщик → Заместитель → Глава клана → Глава альянса
+
+**Command Sections:**
+- `1.1` - Warn command (default: rank 1)
+- `1.2` - Mute/Unmute commands (default: rank 1)
+- `1.3` - Ban/Kick/Assign rank commands (default: rank 1)
+- `1.4` - View other users' warnings (default: rank 1)
+- `1.5` - Set/Remove creator status (default: rank 5)
+- `2.1` - Nickname management for self (default: rank 2)
+- `2.2` - Nickname management for others (default: rank 2)
+- `3.1` - Manage chat roles/ranks (default: rank 3)
+- `3.2` - Set welcome message (default: rank 3)
+- `3.3` - Set chat rules (default: rank 3)
+- `3.4` - Manage role settings (default: rank 3)
+- `3.5` - Generate chat code (default: rank 3)
+- `3.6` - View punishment history (default: rank 3)
+- `3.7` - Access control management (default: rank 3)
+- `3.8` - Profanity filter management (default: rank 3)
+- `4` - Reward system (default: rank 4)
 
 ## Development Workflow
 
