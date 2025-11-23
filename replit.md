@@ -33,22 +33,39 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ## Project Architecture
 
 ### Deployment & Development Workflow
-**Production:** Polling + Flask Keep-Alive on Render.com
-- Bot uses polling to receive updates from Telegram API
-- Flask micro-server runs on port 5000 with `/health` endpoint
-- Deployed on Render free tier (~100 GB bandwidth/month, works 24/7)
 
-**Development/Testing:** Local test_bot.py on Replit
-- TEST_BOT_TOKEN for safe feature testing
-- Flask on port 5001 (no conflicts with production)
-- Workflow: `Test Bot` - python test_bot.py
+**ПОЛНОСТЬЮ РАЗДЕЛЕННЫЕ БОТЫ:**
+
+**Production Bot (Основной)** - Workflow на Replit
+- Использует файлы: `main.py`, `db.py`, `profanity_list.py`
+- Токен: `BOT_TOKEN` (из GitHub)
+- Синхронизируется с GitHub: `git pull` загружает обновления
+- Развернут на Render.com для 24/7 работы: https://anteeq-bot.onrender.com
+- Локально на Replit запускается workflow для тестирования
+
+**Test Bot (Тестовый)** - Отдельные файлы на Replit
+- Использует файлы: `test_main.py`, `test_db.py`, `test_profanity_list.py`
+- Токен: `TEST_BOT_TOKEN` (для разработки)
+- Работает локально на Replit, полностью независим от основного
+- Не конфликтует с Production Bot
+
+**Рабочий процесс:**
+1. Разработка: тестируешь код в `test_main.py` + `test_db.py`
+2. Проверка: убеждаешься что всё работает в Test Bot
+3. Копирование: копируешь код из `test_main.py` → `main.py`, из `test_db.py` → `db.py`
+4. Синхронизация: `git add -A && git commit -m "message" && git push`
+5. Production: Render автоматически обновляет основного бота
+
+**Два полностью независимых workflow:**
+- `Production Bot` → запускает `main.py` (основной бот на Replit)
+- `Test Bot` → запускает `test_main.py` (тестовый бот на Replit)
 
 **Tech Stack:**
 - Language: Python 3.11
 - Bot Framework: python-telegram-bot (async/await with job queue)
-- Database: PostgreSQL (Replit built-in Neon - shared with production)
-- HTTP Server: Flask (threaded)
-- Deployment: Render.com (Docker)
+- Database: PostgreSQL (Replit built-in Neon - общая для обоих ботов в dev)
+- HTTP Server: Flask (threaded на портах 5000/5001)
+- Deployment: Render.com (Docker для production)
 - Version Control: GitHub (qvzv222-dotcom/Anteeq-bot)
 
 ### Key Features
