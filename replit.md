@@ -4,6 +4,14 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
 
 ## Recent Changes
+- **2025-11-23**: Permanent mute system implemented ✅
+  - Removed all time-based automatic unmute functionality
+  - Deleted `get_expired_mutes()` and `get_mute_time()` functions from db.py
+  - Updated `mute_user()` function to permanently store mutes without expiration timestamps
+  - Removed `unmute_time` and `until_date` parameters from mute commands in main.py and test_bot.py
+  - Mutes now last indefinitely until admin manually runs `размут` command
+  - Both production and test bots running successfully on Replit
+
 - **2025-11-23**: Dual-bot development setup ✅
   - Created test_bot.py for safe development and testing
   - Test bot uses TEST_BOT_TOKEN (separate from production BOT_TOKEN)
@@ -45,7 +53,7 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 1. **Rank System**: 6 levels (0-5) from Participant to Alliance Head
 2. **Nickname Management**: Users can set custom nicknames, admins manage others
 3. **Warning System**: Track warnings with automatic ban at 3 warnings, 7-day expiration
-4. **Mute/Ban System**: Time-based mutes (configurable duration) and permanent bans
+4. **Mute/Ban System**: Permanent mutes (last indefinitely until `размут` command) and permanent bans
 5. **Access Control**: Customizable command permissions by rank
 6. **Chat Settings**: Welcome messages, rules, settings import/export via chat codes
 7. **Creator System**: Special rank 5 privileges with "will" command inheritance
@@ -59,7 +67,7 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - **users_ranks**: user_id, chat_id, rank (persistent user ranks)
 - **nicks**: user_id, chat_id, nickname (persistent nicknames)
 - **warns**: user_id, chat_id, from_user_id, reason, warn_date, warn_number
-- **mutes**: user_id, chat_id, mute_until (timestamp)
+- **mutes**: user_id, chat_id, mute_reason, mute_date (permanent mutes - no expiration)
 - **bans**: user_id, chat_id, ban_reason
 - **awards**: user_id, chat_id, award_name, date_given
 - **chat_settings**: chat_id, welcome_message, rules, access_control (JSON)
