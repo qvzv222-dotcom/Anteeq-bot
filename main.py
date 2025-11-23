@@ -1286,17 +1286,10 @@ async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TY
     db.set_max_warns(chat_id, max_warns)
     await update.message.reply_text(f"✅ Лимит предупреждений установлен: {max_warns}")
 
-async def test_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-    
-    await update.message.reply_text("тест")
-
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
     
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^тест$'), test_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто ты'), who_is_this))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто я$'), who_am_i))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^бот$'), bot_response))
