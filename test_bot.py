@@ -1450,10 +1450,13 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text(log_text, parse_mode='HTML')
 
 async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
-    """Фоновая задача - проверяет истекшие муты каждые 60 секунд"""
+    """Фоновая задача - проверяет истекшие муты каждые 10 секунд"""
     expired_mutes = db.get_expired_mutes()
     for chat_id, user_id in expired_mutes:
         try:
+            user_info = await context.bot.get_chat_member(chat_id, user_id)
+            user_name = user_info.user.first_name or "Пользователь"
+            
             await context.bot.restrict_chat_member(
                 chat_id,
                 user_id,
@@ -1465,6 +1468,11 @@ async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
                 )
             )
             db.unmute_user(chat_id, user_id)
+            
+            user_link = f"<a href='tg://user?id={user_id}'>{user_name}</a>"
+            message = f"{user_link} размучен 🔊\n\n⚠️ И чтобы больше так не общался!"
+            await context.bot.send_message(chat_id, message, parse_mode='HTML')
+            
             logging.info(f"✅ Автоматический размут: {user_id} в чате {chat_id}")
         except Exception as e:
             logging.error(f"Ошибка при автоматическом размуте: {str(e)}")
