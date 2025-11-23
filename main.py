@@ -1220,8 +1220,7 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
         link_patterns = [
             r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
             r'(?:www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
-            r't\.me/\S+',
-            r'@\w+'
+            r't\.me/\S+'
         ]
         
         for pattern in link_patterns:
