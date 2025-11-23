@@ -955,15 +955,17 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Для username - используем его напрямую в restrict_chat_member
     if is_username:
         try:
+            # Telegram API требует username БЕЗ символа @
+            username_without_at = lookup_id.lstrip('@')
             await context.bot.restrict_chat_member(
                 chat_id, 
-                lookup_id,  # username со значком @
+                username_without_at,  # username БЕЗ @
                 permissions=ChatPermissions(can_send_messages=False),
                 until_date=unmute_time
             )
             # Пытаемся получить информацию о пользователе после успешного мута для логирования
             try:
-                member = await context.bot.get_chat_member(chat_id, lookup_id)
+                member = await context.bot.get_chat_member(chat_id, username_without_at)
                 user_id_for_db = member.user.id
                 user_link = f"<a href='tg://user?id={user_id_for_db}'>{member.user.first_name or lookup_id}</a>"
             except:
