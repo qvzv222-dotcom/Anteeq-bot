@@ -978,14 +978,15 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         username_or_id = parts[1]
         try:
+            target_id = None
             if username_or_id.isdigit():
                 target_id = int(username_or_id)
             else:
                 username = username_or_id.lstrip('@')
                 try:
-                    member = await context.bot.get_chat_member(chat_id, f"@{username}")
+                    member = await context.bot.get_chat_member(chat_id, username)
                     target_id = member.user.id
-                except:
+                except Exception as user_err:
                     await update.message.reply_text(f"❌ Пользователь @{username} не найден")
                     return
             
