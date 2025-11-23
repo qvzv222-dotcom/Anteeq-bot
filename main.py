@@ -922,23 +922,25 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         # Ищем пользователя по ID или @username
+        is_username = user_id_input.startswith('@')
+        lookup_id = user_id_input
+        
+        if not is_username:
+            # Пытаемся конвертировать в число
+            try:
+                lookup_id = int(user_id_input)
+            except ValueError:
+                await update.message.reply_text(f"❌ Используйте либо @username либо числовой ID\nПримеры: мут @Dfgfxjr 5 с флуд  или  мут 123456789 5 с причина")
+                return
+        
+        # Получаем информацию о пользователе
         try:
-            # Если это username (@xxx)
-            if user_id_input.startswith('@'):
-                username = user_id_input  # Оставляем @ для API
-            else:
-                # Пытаемся конвертировать в число
-                try:
-                    username = int(user_id_input)
-                except ValueError:
-                    await update.message.reply_text(f"❌ Используйте либо @username либо числовой ID\nПримеры: мут @Dfgfxjr 5 с флуд  или  мут 123456789 5 с причина")
-                    return
-            
-            member = await context.bot.get_chat_member(chat_id, username)
+            member = await context.bot.get_chat_member(chat_id, lookup_id)
             target_user = member.user
         except Exception as e:
-            if user_id_input.startswith('@'):
-                await update.message.reply_text(f"❌ Пользователь {user_id_input} не найден в чате")
+            print(f"DEBUG: Ошибка при поиске пользователя {lookup_id}: {e}")
+            if is_username:
+                await update.message.reply_text(f"❌ Пользователь {user_id_input} не найден в чате\n💡 Убедитесь что пользователь в чате и бот имеет права администратора\nОшибка: {type(e).__name__}")
             else:
                 await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
             return
