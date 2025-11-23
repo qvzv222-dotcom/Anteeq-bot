@@ -324,18 +324,35 @@ async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        chat_members = await context.bot.get_chat_member_count(chat_id)
         members_text = "📢 <b>СБОР КЛАНА!</b>\n\n"
+        members_set = set()
         
-        administrators = await context.bot.get_chat_administrators(chat_id)
-        admin_ids = {admin.user.id for admin in administrators}
+        # Получить администраторов
+        try:
+            administrators = await context.bot.get_chat_administrators(chat_id)
+            for admin in administrators:
+                if not admin.user.is_bot:
+                    members_set.add(admin.user.id)
+        except:
+            pass
         
+        # Получить всех кто когда-либо был в БД (ранги, награды, наказания)
+        all_members = db.get_all_users_in_chat(chat_id)
+        if all_members:
+            for member_id in all_members:
+                members_set.add(member_id)
+        
+        # Тегать всех
         count = 0
-        for admin in administrators:
-            if not admin.user.is_bot:
-                user_link = f"<a href='tg://user?id={admin.user.id}'>{admin.user.first_name}</a>"
+        for member_id in sorted(members_set):
+            try:
+                user_info = await context.bot.get_chat_member(chat_id, member_id)
+                full_name = user_info.user.first_name or "Участник"
+                user_link = f"<a href='tg://user?id={member_id}'>{full_name}</a>"
                 members_text += f"{user_link} "
                 count += 1
+            except:
+                continue
         
         members_text += f"\n\n✅ Упомянуто: {count} участников"
         await update.message.reply_text(members_text, parse_mode='HTML')
