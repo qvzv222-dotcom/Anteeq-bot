@@ -972,10 +972,14 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except ValueError:
                 pass
     elif len(parts) >= 2:
-        username_or_id = parts[1].lstrip('@')
+        username_input = parts[1].lstrip('@')
         try:
-            member = await context.bot.get_chat_member(chat_id, username_or_id)
-            target_user = member.user
+            try:
+                member = await context.bot.get_chat_member(chat_id, f"@{username_input}")
+                target_user = member.user
+            except:
+                member = await context.bot.get_chat_member(chat_id, username_input)
+                target_user = member.user
             
             if len(parts) > 2:
                 try:
@@ -990,7 +994,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except ValueError:
                     reason_start = 2
         except Exception as e:
-            await update.message.reply_text(f"❌ Пользователь не найден")
+            await update.message.reply_text(f"❌ Пользователь @{username_input} не найден")
             return
     else:
         await update.message.reply_text("Использование: мут @username 10 м [причина]\nИли ответьте на сообщение и напишите 'мут 10 м [причина]'")
