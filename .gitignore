@@ -32,3 +32,9 @@ env/
 attached_assets/
 .env
 .env.local
+
+# Test bot files - local development only on Replit
+test_main.py
+test_db.py
+test_profanity_list.py
+test_bot.py
