@@ -1054,7 +1054,7 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target_user = update.message.reply_to_message.from_user
 
-    db.remove_mute(chat_id, target_user.id)
+    db.unmute_user(chat_id, target_user.id)
 
     try:
         await context.bot.restrict_chat_member(

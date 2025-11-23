@@ -877,11 +877,64 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'мут [время] [с/м]'\nПример: мут 10 с (10 секунд) или мут 5 м (5 минут)")
+    text = update.message.text.strip()
+    parts = text.split()
+    
+    target_user = None
+    duration = 60
+    unit = "минут"
+    reason = "Временное ограничение сообщений"
+    
+    # Вариант 1: Ответ на сообщение - мут 5 с причина
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        if len(parts) > 1:
+            try:
+                duration = int(parts[1])
+                if len(parts) > 2:
+                    unit_str = parts[2].lower()
+                    if unit_str in ['с', 'сек', 'секунд']:
+                        unit = "секунд"
+                    elif unit_str in ['м', 'мин', 'минут']:
+                        unit = "минут"
+                    if len(parts) > 3:
+                        reason = " ".join(parts[3:])
+            except ValueError:
+                pass
+    
+    # Вариант 2: По user_id (ID пользователя) - мут 123456789 5 с причина
+    elif len(parts) >= 4:
+        user_id_input = parts[1]
+        
+        # Парсим параметры
+        try:
+            duration = int(parts[2])
+            unit_str = parts[3].lower()
+            if unit_str in ['с', 'сек', 'секунд']:
+                unit = "секунд"
+            elif unit_str in ['м', 'мин', 'минут']:
+                unit = "минут"
+            
+            if len(parts) > 4:
+                reason = " ".join(parts[4:])
+        except (ValueError, IndexError):
+            await update.message.reply_text("❌ Ошибка: неверный формат")
+            return
+        
+        # Ищем пользователя по ID
+        try:
+            member = await context.bot.get_chat_member(chat_id, int(user_id_input))
+            target_user = member.user
+        except:
+            await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
+            return
+    else:
+        await update.message.reply_text("Использование: мут USER_ID 5 с флуд\n(где USER_ID - ID пользователя)\nИли ответьте на сообщение: мут 5 м")
         return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("❌ Не удалось получить информацию о пользователе")
+        return
 
     if target_user.id == user_id:
         await update.message.reply_text("❌ Вы не можете мутить себя", parse_mode='HTML')
@@ -891,35 +944,11 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    text = update.message.text.strip()
-    parts = text.split()
-    
-    duration = 60
-    unit = "минут"
-    
-    if len(parts) > 1:
-        try:
-            duration = int(parts[1])
-            if len(parts) > 2:
-                suffix = parts[2].lower()
-                if suffix in ['с', 'сек', 'секунд']:
-                    duration = duration
-                    unit = "секунд"
-                elif suffix in ['м', 'мин', 'минут']:
-                    duration = duration
-                    unit = "минут"
-            else:
-                unit = "минут"
-        except ValueError:
-            duration = 60
-            unit = "минут"
-
     if unit == "секунд":
         unmute_time = datetime.now() + timedelta(seconds=duration)
     else:
         unmute_time = datetime.now() + timedelta(minutes=duration)
     
-    reason = "Временное ограничение сообщений"
     db.mute_user(chat_id, target_user.id, unmute_time, reason)
 
     try:
@@ -931,7 +960,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(
-            f"{user_link} замучен на {duration} {unit}",
+            f"{user_link} замучен на {duration} {unit}\nПричина: {reason}",
             parse_mode='HTML'
         )
     except Exception as e:
@@ -953,7 +982,7 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target_user = update.message.reply_to_message.from_user
 
-    db.remove_mute(chat_id, target_user.id)
+    db.unmute_user(chat_id, target_user.id)
 
     try:
         await context.bot.restrict_chat_member(
