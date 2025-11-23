@@ -955,23 +955,27 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user = None
     duration = 60
     unit = "минут"
-    reason_start = 1
+    reason = "Временное ограничение сообщений"
     
+    # Вариант 1: Ответ на сообщение - мут 5 с причина
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
         if len(parts) > 1:
             try:
                 duration = int(parts[1])
                 if len(parts) > 2:
-                    suffix = parts[2].lower()
-                    if suffix in ['с', 'сек', 'секунд']:
+                    unit_str = parts[2].lower()
+                    if unit_str in ['с', 'сек', 'секунд']:
                         unit = "секунд"
-                    elif suffix in ['м', 'мин', 'минут']:
+                    elif unit_str in ['м', 'мин', 'минут']:
                         unit = "минут"
-                reason_start = 3
+                    if len(parts) > 3:
+                        reason = " ".join(parts[3:])
             except ValueError:
                 pass
-    elif len(parts) >= 2:
+    
+    # Вариант 2: По юзернейму - мут @username 5 с причина
+    elif len(parts) >= 4:
         username_input = parts[1].lstrip('@')
         try:
             try:
@@ -981,23 +985,24 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 member = await context.bot.get_chat_member(chat_id, username_input)
                 target_user = member.user
             
-            if len(parts) > 2:
-                try:
-                    duration = int(parts[2])
-                    if len(parts) > 3:
-                        suffix = parts[3].lower()
-                        if suffix in ['с', 'сек', 'секунд']:
-                            unit = "секунд"
-                        elif suffix in ['м', 'мин', 'минут']:
-                            unit = "минут"
-                    reason_start = 4
-                except ValueError:
-                    reason_start = 2
+            try:
+                duration = int(parts[2])
+                unit_str = parts[3].lower()
+                if unit_str in ['с', 'сек', 'секунд']:
+                    unit = "секунд"
+                elif unit_str in ['м', 'мин', 'минут']:
+                    unit = "минут"
+                
+                if len(parts) > 4:
+                    reason = " ".join(parts[4:])
+            except (ValueError, IndexError):
+                await update.message.reply_text("❌ Ошибка: неверный формат")
+                return
         except Exception as e:
             await update.message.reply_text(f"❌ Пользователь @{username_input} не найден")
             return
     else:
-        await update.message.reply_text("Использование: мут @username 10 м [причина]\nИли ответьте на сообщение и напишите 'мут 10 м [причина]'")
+        await update.message.reply_text("Использование: мут @username 5 с флуд\nИли ответьте на сообщение: мут 5 м")
         return
 
     if not target_user:
@@ -1017,7 +1022,6 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         unmute_time = datetime.now() + timedelta(minutes=duration)
     
-    reason = " ".join(parts[reason_start:]) if reason_start < len(parts) else "Временное ограничение сообщений"
     db.mute_user(chat_id, target_user.id, unmute_time, reason)
 
     try:
