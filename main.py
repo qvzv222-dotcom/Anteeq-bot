@@ -339,8 +339,11 @@ async def gather_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Получить всех кто когда-либо был в БД (ранги, награды, наказания)
         all_members = db.get_all_users_in_chat(chat_id)
         if all_members:
-            for member_id in all_members:
-                members_set.add(member_id)
+            for member in all_members:
+                if isinstance(member, dict) and 'user_id' in member:
+                    members_set.add(member['user_id'])
+                elif isinstance(member, int):
+                    members_set.add(member)
         
         # Тегать всех
         count = 0
