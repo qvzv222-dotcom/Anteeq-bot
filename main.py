@@ -1211,6 +1211,7 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+    user = update.message.from_user
     user_rank = db.get_user_rank(chat_id, user_id)
     
     link_posting_rank = db.get_link_posting_rank(chat_id)
@@ -1226,6 +1227,29 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for pattern in link_patterns:
             if re.search(pattern, text, re.IGNORECASE):
                 await update.message.delete()
+                
+                db.warn_user(chat_id, user_id, chat_id, "Запрещенная ссылка")
+                warns = db.get_warns(chat_id, user_id)
+                warn_count = len(warns) if warns else 0
+                max_warns = db.get_max_warns(chat_id)
+                
+                if warn_count >= max_warns:
+                    db.ban_user(chat_id, user_id, "Автобан за ссылки")
+                    try:
+                        await context.bot.ban_chat_member(chat_id, user_id)
+                    except:
+                        pass
+                    await context.bot.send_message(
+                        chat_id,
+                        f"❌ Пользователь {user.first_name} забанен за распространение ссылок ({warn_count}+ предупреждений)"
+                    )
+                else:
+                    user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
+                    await context.bot.send_message(
+                        chat_id,
+                        f"⚠️ {user_link} предупреждение за ссылку ({warn_count}/{max_warns})",
+                        parse_mode='HTML'
+                    )
                 return
 
 async def enable_profanity_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
