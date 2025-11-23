@@ -794,6 +794,46 @@ def is_user_currently_muted(chat_id: int, user_id: int) -> bool:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return False
 
+def get_user_punishment_history(chat_id: int, user_id: int) -> List[Dict[str, Any]]:
+    """Получает историю наказаний конкретного пользователя"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute('''
+            SELECT 
+                user_id, 
+                'предупреждение' as punishment_type, 
+                reason as punishment_reason, 
+                warn_date as punishment_date
+            FROM warns
+            WHERE chat_id = %s AND user_id = %s
+            UNION ALL
+            SELECT 
+                user_id,
+                'мут' as punishment_type,
+                mute_reason as punishment_reason,
+                mute_date as punishment_date
+            FROM mutes
+            WHERE chat_id = %s AND user_id = %s
+            UNION ALL
+            SELECT 
+                user_id,
+                'бан' as punishment_type,
+                ban_reason as punishment_reason,
+                ban_date as punishment_date
+            FROM bans
+            WHERE chat_id = %s AND user_id = %s
+            ORDER BY punishment_date DESC
+        ''', (chat_id, user_id, chat_id, user_id, chat_id, user_id))
+        
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [dict(row) for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
 def clear_punishment_history(chat_id: int):
     """Очищает историю наказаний чата (муты, варны, баны)"""
     try:

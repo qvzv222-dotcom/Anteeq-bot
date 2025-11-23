@@ -1387,6 +1387,43 @@ async def clear_punishment_history_command(update: Update, context: ContextTypes
     db.clear_punishment_history(chat_id)
     await update.message.reply_text("✅ История наказаний очищена")
 
+async def user_punishments_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    
+    chat_id = update.message.chat_id
+    target_user_id = None
+    target_user_name = None
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        target_user_id = target_user.id
+        target_user_name = target_user.first_name or "Пользователь"
+    else:
+        target_user_id = update.message.from_user.id
+        target_user_name = update.message.from_user.first_name or "Вы"
+    
+    log_data = db.get_user_punishment_history(chat_id, target_user_id)
+    
+    if not log_data:
+        await update.message.reply_text(f"✅ {target_user_name} — чистая история")
+        return
+    
+    lines = []
+    type_emoji = {'предупреждение': '⚠️', 'мут': '🤐', 'бан': '🚫'}
+    
+    for record in log_data[:20]:
+        emoji = type_emoji.get(record['punishment_type'], '📌')
+        reason = (record['punishment_reason'] or "—")[:15]
+        date_str = record['punishment_date'].strftime("%d.%m") if record['punishment_date'] else "?"
+        lines.append(f"{emoji} {reason} | {date_str}")
+    
+    log_text = f"📋 <b>Наказания {target_user_name}</b>\n" + "\n".join(lines)
+    if len(log_data) > 20:
+        log_text += f"\n... +{len(log_data) - 20}"
+    
+    await update.message.reply_text(log_text, parse_mode='HTML')
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1437,6 +1474,7 @@ def setup_handlers(application):
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^история наказаний$'), moderation_log_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^очистить историю наказаний$'), clear_punishment_history_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^наказания$'), user_punishments_command))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
