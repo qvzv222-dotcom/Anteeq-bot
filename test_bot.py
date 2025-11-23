@@ -1539,14 +1539,15 @@ def main():
     db.init_database()
     
     print("Инициализация бота...")
-    application = Application.builder().token(BOT_TOKEN).job_queue(None).build()
+    application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
     # Запуск проверки истекших мутов каждую минуту
-    application.job_queue.run_repeating(check_expired_mutes, interval=60, first=10)
-    print("⏰ Автоматическая проверка мутов запущена")
+    if application.job_queue:
+        application.job_queue.run_repeating(check_expired_mutes, interval=60, first=10)
+        print("⏰ Автоматическая проверка мутов запущена")
     
     print("✅ Бот инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
