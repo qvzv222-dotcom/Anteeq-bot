@@ -1168,7 +1168,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    profanity_enabled = db.is_profanity_filter_enabled(chat_id)
+    profanity_enabled = db.get_profanity_filter_status(chat_id)
     
     if not profanity_enabled:
         return
