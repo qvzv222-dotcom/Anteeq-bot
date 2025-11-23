@@ -1449,6 +1449,29 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
     
     await update.message.reply_text(log_text, parse_mode='HTML')
 
+async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
+    """Проверяет истекшие муты и восстанавливает права пользователей"""
+    try:
+        expired_mutes = db.get_expired_mutes()
+        for chat_id, user_id in expired_mutes:
+            try:
+                await context.bot.restrict_chat_member(
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    permissions=ChatPermissions(
+                        can_send_messages=True,
+                        can_send_polls=True,
+                        can_send_other_messages=True,
+                        can_add_web_page_previews=True
+                    )
+                )
+                db.unmute_user(chat_id, user_id)
+                print(f"✅ Пользователь {user_id} размучен в чате {chat_id}")
+            except Exception as e:
+                print(f"⚠️ Ошибка при размуте {user_id} в чате {chat_id}: {e}")
+    except Exception as e:
+        print(f"❌ Ошибка проверки истекших мутов: {e}")
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1520,6 +1543,10 @@ def main():
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Запуск проверки истекших мутов каждую минуту
+    application.job_queue.run_repeating(check_expired_mutes, interval=60, first=10)
+    print("⏰ Автоматическая проверка мутов запущена")
     
     print("✅ Бот инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
