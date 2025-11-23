@@ -1416,7 +1416,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!снять награды'), remove_awards_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^Наградной список$'), show_participants))
     
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^модер лог$'), moderation_log_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^история наказаний$'), moderation_log_command))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
