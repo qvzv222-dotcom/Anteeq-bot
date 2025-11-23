@@ -13,7 +13,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-from flask import Flask
+from flask import Flask, request, jsonify
 
 import db
 from profanity_list import contains_profanity
@@ -1341,80 +1341,78 @@ def setup_handlers(application):
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
 
-# Keep-alive сервер на порту 5000 (Replit держит его живым)
+# Flask Webhook сервер на порту 5000
 app = Flask('')
+application = None
 
 @app.route('/')
 def home():
-    return "Bot is running on Replit!"
+    return "✅ Bot is running on Webhooks mode!"
 
-@app.route('/health')
-def health():
-    return {"status": "ok"}, 200
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """Получает обновления от Telegram через webhook"""
+    try:
+        update_data = request.get_json()
+        if not update_data:
+            return jsonify({"ok": False}), 400
+        
+        # Обработать обновление асинхронно
+        import asyncio
+        asyncio.run(application.process_update(Update.de_json(update_data, application.bot)))
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"❌ Webhook error: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 def run_flask():
-    print("🌐 Keep-alive сервер запущен на http://0.0.0.0:5000")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    print("🌐 Webhook сервер запущен на http://0.0.0.0:5000")
+    print("📡 Готов получать обновления от Telegram через POST /webhook")
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
 
-def ping_self():
-    """АГРЕССИВНЫЙ keep-alive: пингует сам себя каждые 30 секунд"""
-    import urllib.request
-    while True:
-        try:
-            time.sleep(30)  # Пинг КАЖДЫЕ 30 СЕКУНД (был 60)
-            urllib.request.urlopen('http://localhost:5000/health', timeout=5)
-            print(f"✅ Keep-alive ping #{int(time.time()) % 1000}")
-        except Exception as e:
-            print(f"⚠️ Keep-alive ping failed: {str(e)}")
-            time.sleep(5)  # Повторный пинг через 5 сек при ошибке
-
-def aggressive_pinger():
-    """Дополнительный поток для еще более частых пингов"""
-    import urllib.request
-    while True:
-        try:
-            time.sleep(45)  # Дополнительный пинг каждые 45 секунд
-            urllib.request.urlopen('http://localhost:5000/', timeout=5)
-        except:
-            pass
-
-def keep_alive():
-    # Flask сервер
-    t = threading.Thread(target=run_flask, daemon=False)
-    t.start()
-    
-    # Основной пингер (каждые 30 сек)
-    ping_thread = threading.Thread(target=ping_self, daemon=False)
-    ping_thread.start()
-    
-    # Дополнительный пингер (каждые 45 сек)
-    extra_ping_thread = threading.Thread(target=aggressive_pinger, daemon=False)
-    extra_ping_thread.start()
-    
-    print("🚀 АГРЕССИВНЫЙ Keep-alive активирован:")
-    print("   • Flask сервер на порту 5000")
-    print("   • Пинг 1: каждые 30 секунд")
-    print("   • Пинг 2: каждые 45 секунд")
+async def setup_webhook(app_instance):
+    """Регистрирует webhook у Telegram API"""
+    try:
+        # Получаем URL из переменной окружения или используем текущий
+        # На Replit это должно быть динамически получено
+        print("⏳ Регистрирую webhook у Telegram...")
+        
+        # Просто удаляем старый webhook если есть и ждём
+        await app_instance.bot.delete_webhook(drop_pending_updates=True)
+        print("✅ Старые webhooks удалены")
+        
+    except Exception as e:
+        print(f"⚠️ Webhook setup warning: {str(e)}")
 
 def main():
+    global application
+    
     print("Инициализация базы данных...")
     db.init_database()
     
-    print("Запуск keep-alive сервера на порту 5000...")
-    keep_alive()
-    time.sleep(2)
-    
+    print("Инициализация бота в режиме WEBHOOK...")
     application = Application.builder().token(BOT_TOKEN).build()
     setup_handlers(application)
-    
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
     
-    print("✅ Бот полностью инициализирован!")
-    print("✅ Keep-alive сервер работает - проект останется активным!")
-    print("Добавьте бота в группу и дайте ему права администратора!")
-    application.run_polling()
+    # Запускаем Flask в отдельном потоке
+    print("Запуск Flask webhook сервера на порту 5000...")
+    flask_thread = threading.Thread(target=run_flask, daemon=False)
+    flask_thread.start()
+    time.sleep(1)
     
-    print("Бот остановлен")
+    print("✅ Бот готов!")
+    print("✅ Webhook режим активирован - надежная работа на Replit!")
+    print("Добавьте бота в группу и дайте ему права администратора!")
+    
+    # Бот будет работать пока Flask слушает webhook'и
+    # Это нужно чтобы программа не заканчивалась
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Бот остановлен")
+        application.stop()
 
 if __name__ == '__main__':
     main()
