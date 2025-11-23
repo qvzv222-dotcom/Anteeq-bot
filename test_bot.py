@@ -1028,19 +1028,13 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    if unit == "секунд":
-        unmute_time = datetime.now() + timedelta(seconds=duration)
-    else:
-        unmute_time = datetime.now() + timedelta(minutes=duration)
-    
-    db.mute_user(chat_id, target_user.id, unmute_time, reason)
+    db.mute_user(chat_id, target_user.id, reason)
 
     try:
         await context.bot.restrict_chat_member(
             chat_id, 
             target_user.id,
-            permissions=ChatPermissions(can_send_messages=False),
-            until_date=unmute_time
+            permissions=ChatPermissions(can_send_messages=False)
         )
         user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(
