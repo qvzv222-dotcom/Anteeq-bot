@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional
 
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
@@ -15,6 +16,12 @@ from telegram.ext import (
 )
 import db
 from profanity_list import contains_profanity
+
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return {'status': 'ok', 'timestamp': datetime.now().isoformat()}, 200
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1351,6 +1358,14 @@ def main():
     
     print("✅ Бот инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
+    
+    # Start Flask health check server in background thread
+    def run_flask():
+        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    print("🌐 Flask health check server started on port 5000")
     
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
