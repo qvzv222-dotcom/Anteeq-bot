@@ -300,7 +300,11 @@ def unmute_user(chat_id: int, user_id: int):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('DELETE FROM mutes WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        cur.execute('''
+            UPDATE mutes 
+            SET unmute_time = CURRENT_TIMESTAMP 
+            WHERE chat_id = %s AND user_id = %s
+        ''', (chat_id, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -772,3 +776,20 @@ def get_moderation_log(chat_id: int) -> List[Dict[str, Any]]:
         import logging
         logging.error(f"ERROR in get_moderation_log for chat {chat_id}: {str(e)}")
         return []
+
+def is_user_currently_muted(chat_id: int, user_id: int) -> bool:
+    """Проверяет активный ли мут (не истекший)"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT 1 FROM mutes 
+            WHERE chat_id = %s AND user_id = %s 
+            AND unmute_time > CURRENT_TIMESTAMP
+        ''', (chat_id, user_id))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return bool(result)
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return False
