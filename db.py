@@ -302,7 +302,7 @@ def unmute_user(chat_id: int, user_id: int):
         cur = conn.cursor()
         cur.execute('''
             UPDATE mutes 
-            SET unmute_time = CURRENT_TIMESTAMP 
+            SET unmute_time = '2999-12-31'::TIMESTAMP
             WHERE chat_id = %s AND user_id = %s
         ''', (chat_id, user_id))
         conn.commit()
