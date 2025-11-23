@@ -280,16 +280,16 @@ def remove_all_warns(chat_id: int, user_id: int):
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
 
-def mute_user(chat_id: int, user_id: int, reason: str = ''):
+def mute_user(chat_id: int, user_id: int, until: datetime, reason: str = ''):
     try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO mutes (chat_id, user_id, mute_reason, mute_date)
-            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+            INSERT INTO mutes (chat_id, user_id, unmute_time, mute_reason, mute_date)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT (chat_id, user_id)
-            DO UPDATE SET mute_reason = EXCLUDED.mute_reason
-        ''', (chat_id, user_id, reason))
+            DO UPDATE SET unmute_time = EXCLUDED.unmute_time, mute_reason = EXCLUDED.mute_reason
+        ''', (chat_id, user_id, until, reason))
         conn.commit()
         cur.close()
         conn.close()
@@ -333,6 +333,30 @@ def unban_user(chat_id: int, user_id: int):
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
+
+def get_mute_time(chat_id: int, user_id: int) -> Optional[datetime]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT unmute_time FROM mutes WHERE chat_id = %s AND user_id = %s', (chat_id, user_id))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else None
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return None
+
+def get_expired_mutes() -> List[tuple]:
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT chat_id, user_id FROM mutes WHERE unmute_time < CURRENT_TIMESTAMP')
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return results
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
 
 def is_banned(chat_id: int, user_id: int) -> bool:
     try:

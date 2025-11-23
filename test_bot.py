@@ -1028,13 +1028,19 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    db.mute_user(chat_id, target_user.id, reason)
+    if unit == "секунд":
+        unmute_time = datetime.now() + timedelta(seconds=duration)
+    else:
+        unmute_time = datetime.now() + timedelta(minutes=duration)
+    
+    db.mute_user(chat_id, target_user.id, unmute_time, reason)
 
     try:
         await context.bot.restrict_chat_member(
             chat_id, 
             target_user.id,
-            permissions=ChatPermissions(can_send_messages=False)
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=unmute_time
         )
         user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
         await update.message.reply_text(
@@ -1443,6 +1449,26 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
     
     await update.message.reply_text(log_text, parse_mode='HTML')
 
+async def check_expired_mutes(context: ContextTypes.DEFAULT_TYPE):
+    """Фоновая задача - проверяет истекшие муты каждые 60 секунд"""
+    expired_mutes = db.get_expired_mutes()
+    for chat_id, user_id in expired_mutes:
+        try:
+            await context.bot.restrict_chat_member(
+                chat_id,
+                user_id,
+                permissions=ChatPermissions(
+                    can_send_messages=True,
+                    can_send_polls=True,
+                    can_send_other_messages=True,
+                    can_add_web_page_previews=True
+                )
+            )
+            db.unmute_user(chat_id, user_id)
+            logging.info(f"✅ Автоматический размут: {user_id} в чате {chat_id}")
+        except Exception as e:
+            logging.error(f"Ошибка при автоматическом размуте: {str(e)}")
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1514,6 +1540,9 @@ def main():
     setup_handlers(application)
     
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Добавляем фоновую задачу для проверки истекших мутов
+    application.job_queue.run_repeating(check_expired_mutes, interval=60, first=10)
     
     print("✅ Бот инициализирован!")
     print("Добавьте бота в группу и дайте ему права администратора!")
