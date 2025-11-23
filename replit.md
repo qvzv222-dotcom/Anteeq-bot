@@ -4,6 +4,13 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
 
 ## Recent Changes
+- **2025-11-23**: Dual-bot development setup ✅
+  - Created test_bot.py for safe development and testing
+  - Test bot uses TEST_BOT_TOKEN (separate from production BOT_TOKEN)
+  - Test bot workflow runs on port 5001 (production on 5000)
+  - Development workflow: Test new features locally → GitHub → Render production deploy
+  - Both bots can run simultaneously for parallel testing
+
 - **2025-11-23**: Successfully migrated to Render.com for reliable 24/7 hosting ✅
   - Uploaded code to GitHub repository (qvzv222-dotcom/Anteeq-bot)
   - Created Dockerfile and render.yaml for automatic deployments
@@ -13,33 +20,26 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
   - Bot successfully responding to all commands
   - Environment variables configured: BOT_TOKEN, DATABASE_URL
 
-- **2025-11-22**: Enhanced keep-alive mechanism
-  - Added aggressive background pinger thread (every 30 seconds)
-  - Implemented dual-threaded approach for maximum uptime
-  
-- **2025-11-21**: Initial project setup on Replit
-  - Installed Python 3.11 and python-telegram-bot library
-  - Created main.py with complete bot functionality
-  - Set up PostgreSQL database for persistent storage
-  - Added .gitignore for Python project
-
 ## Project Architecture
 
-### Deployment & Uptime Strategy
-**Current: Polling + Flask Keep-Alive (Production-Ready)**
-- Bot uses polling to receive updates from Telegram API (reliable on free tier)
+### Deployment & Development Workflow
+**Production:** Polling + Flask Keep-Alive on Render.com
+- Bot uses polling to receive updates from Telegram API
 - Flask micro-server runs on port 5000 with `/health` endpoint
-- UptimeRobot pings the `/health` endpoint every 5 minutes
-- External monitoring prevents Replit free tier from hibernating the project
-- Survives Replit restarts - automatically reconnects to Telegram polling
+- Deployed on Render free tier (~100 GB bandwidth/month, works 24/7)
+
+**Development/Testing:** Local test_bot.py on Replit
+- TEST_BOT_TOKEN for safe feature testing
+- Flask on port 5001 (no conflicts with production)
+- Workflow: `Test Bot` - python test_bot.py
 
 **Tech Stack:**
 - Language: Python 3.11
 - Bot Framework: python-telegram-bot (async/await with job queue)
-- Database: PostgreSQL (Replit built-in Neon)
+- Database: PostgreSQL (Replit built-in Neon - shared with production)
 - HTTP Server: Flask (threaded)
-- Uptime Monitoring: UptimeRobot (free tier)
-- Optional: pyngrok support for tunneling (if needed for webhook approach)
+- Deployment: Render.com (Docker)
+- Version Control: GitHub (qvzv222-dotcom/Anteeq-bot)
 
 ### Key Features
 1. **Rank System**: 6 levels (0-5) from Participant to Alliance Head
@@ -68,17 +68,21 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ### File Structure
 ```
 .
-├── main.py              # Main bot with all command handlers and Flask server
+├── main.py              # Production bot (Render)
+├── test_bot.py          # Test bot for development (Replit)
 ├── db.py                # Database operations (PostgreSQL)
 ├── profanity_list.py    # Profanity filter word list
+├── Dockerfile           # Docker configuration for Render
+├── render.yaml          # Render deployment config
 ├── requirements.txt     # Python dependencies
-├── .gitignore          # Git ignore rules
-└── replit.md           # This file - project documentation
+├── .gitignore           # Git ignore rules
+└── replit.md            # This file - project documentation
 ```
 
 ### Environment Variables Required
-- `BOT_TOKEN` - Telegram Bot API token (from @BotFather)
-- `DATABASE_URL` - PostgreSQL connection string (auto-provided by Replit)
+- `BOT_TOKEN` - Production Telegram Bot API token (Render only)
+- `TEST_BOT_TOKEN` - Test Telegram Bot API token (Replit only)
+- `DATABASE_URL` - PostgreSQL connection string (shared, auto-provided by Replit)
 - Optional: `DEEPSEEK_API_KEY` - For AI features
 
 ### Creator Usernames (Auto Rank 5)
@@ -126,50 +130,45 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `!снять награды @user` - Remove all awards
 - `Наградной список` - Show participants with awards
 
+## Development Workflow
+
+### Adding New Features
+1. **Edit test_bot.py** on Replit to test new commands/features
+2. **Test in a private chat** or test group with test bot
+3. **Copy working code to main.py** once verified
+4. **Commit and push to GitHub**:
+   ```bash
+   git add main.py
+   git commit -m "Add new feature: [description]"
+   git push
+   ```
+5. **Render automatically deploys** - production bot updates within minutes
+
+### Running Both Bots Simultaneously
+- Production bot: Workflow `Telegram Bot` (python main.py) → Render deployment
+- Test bot: Workflow `Test Bot` (python test_bot.py) → Local testing
+
+### Database Notes
+- Both bots share same PostgreSQL database
+- Changes in test_bot.py affect production data (be careful!)
+- Test in isolated chats to avoid data pollution
+
+## Render Free Tier Details
+
+### Limits
+- **Bandwidth**: 100 GB/month (for Telegram bot = essentially unlimited)
+- **Uptime**: 24/7 (no sleep like Replit free tier)
+- **Build time**: 500 minutes/month shared
+- **Cost**: Completely FREE for single bot
+
+### Scaling Notes
+- Single bot can handle 1000+ users without issues
+- Bandwidth (18 MB/month typical) uses only 0.018% of 100 GB limit
+- Perfect for hobby/small-medium projects
+
 ## User Preferences
-- Uses Russian-language commands exclusively
+- Russian-language commands exclusively
 - HTML-formatted clickable Telegram profile links (tg://user?id=)
 - Moscow timezone (UTC+3) for all timestamps
-- Bot is protected from being punished (can't warn/mute/ban itself)
-- Dynamic welcome messages with actual chat name
-
-## Uptime Configuration
-
-### UptimeRobot Setup (Required for 24/7 uptime)
-1. Create account at https://uptimerobot.com
-2. Create new HTTP(S) monitor:
-   - **URL**: `https://your-replit-url.replit.dev/health`
-   - **Type**: HTTP(s)
-   - **Interval**: 5 minutes
-   - **Name**: "Telegram Bot Keep-alive"
-3. Monitor will ping the `/health` endpoint every 5 minutes
-4. This prevents Replit free tier from hibernating the bot
-
-### Workflow Configuration
-- **Workflow name**: `Telegram Bot`
-- **Command**: `python main.py`
-- **Output type**: `console`
-- Auto-restarts on file changes and package installations
-
-## How It Works
-
-### Polling Loop
-1. Application starts and initializes database
-2. Flask server starts on port 5000 in background thread
-3. Bot begins polling Telegram API for updates
-4. When message arrives, appropriate handler processes it
-5. UptimeRobot pings `/health` endpoint every 5 minutes
-6. Replit sees external traffic → keeps project active
-
-### Keep-Alive Mechanism
-- Flask `/` and `/health` endpoints respond to any request
-- `/health` returns JSON with current timestamp and status
-- UptimeRobot external pings count as "user activity" for Replit
-- Even if Replit restarts the container, polling automatically resumes
-
-## Future Improvements
-- Scheduled auto-mute expiration (using job queue)
-- Statistics and analytics dashboard
-- Backup/export functionality with encryption
-- Integration with other monitoring services
-- Webhook support (requires permanent URL via ngrok/cloudflare)
+- Safe testing workflow with separate test bot
+- Development-first approach: test locally before pushing to production
