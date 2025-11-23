@@ -1371,6 +1371,22 @@ async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_T
     
     await update.message.reply_text(log_text, parse_mode='HTML')
 
+async def clear_punishment_history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    creator = db.get_chat_creator(chat_id)
+    is_creator = creator == user_id
+    
+    if not is_creator and not has_access(chat_id, user_id, "3.6"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+    
+    db.clear_punishment_history(chat_id)
+    await update.message.reply_text("✅ История наказаний очищена")
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1420,6 +1436,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^Наградной список$'), show_participants))
     
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^история наказаний$'), moderation_log_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^очистить историю наказаний$'), clear_punishment_history_command))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))

@@ -793,3 +793,17 @@ def is_user_currently_muted(chat_id: int, user_id: int) -> bool:
         return bool(result)
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return False
+
+def clear_punishment_history(chat_id: int):
+    """Очищает историю наказаний чата (муты, варны, баны)"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM mutes WHERE chat_id = %s', (chat_id,))
+        cur.execute('DELETE FROM warns WHERE chat_id = %s', (chat_id,))
+        cur.execute('DELETE FROM bans WHERE chat_id = %s', (chat_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
