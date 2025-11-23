@@ -13,16 +13,10 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-from flask import Flask, request, jsonify
+from flask import Flask
 
 import db
 from profanity_list import contains_profanity
-
-try:
-    from pyngrok import ngrok
-    NGROK_AVAILABLE = True
-except ImportError:
-    NGROK_AVAILABLE = False
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1352,11 +1346,11 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "✅ Bot is running on Replit!"
+    return "✅ Bot is running!"
 
 @app.route('/health')
 def health():
-    return {"status": "ok", "timestamp": int(time.time())}, 200
+    return {"status": "ok"}, 200
 
 def run_flask():
     print("🌐 Flask keep-alive сервер запущен на http://0.0.0.0:5000")
@@ -1366,19 +1360,8 @@ def start_keep_alive():
     """Запускает Flask сервер в отдельном потоке"""
     flask_thread = threading.Thread(target=run_flask, daemon=False)
     flask_thread.start()
-    time.sleep(2)
+    time.sleep(1)
     print("✅ Keep-alive сервер активирован!")
-    
-    # Попытка создать ngrok туннель для публичного URL
-    if NGROK_AVAILABLE:
-        try:
-            public_url = ngrok.connect(5000, "http")
-            print(f"🌐 ПУБЛИЧНЫЙ URL: {public_url}")
-            print("⚠️ Сохрани этот URL для регистрации webhook в Telegram!")
-        except Exception as e:
-            print(f"⚠️ Ngrok недоступен: {str(e)}")
-    else:
-        print("💡 Для постоянного URL: установи ngrok API ключ")
 
 def main():
     print("Инициализация базы данных...")
