@@ -1357,26 +1357,44 @@ def run_flask():
     app.run(host='0.0.0.0', port=5000, debug=False)
 
 def ping_self():
-    """Периодически пингует сам себя чтобы Replit не отключил проект"""
+    """АГРЕССИВНЫЙ keep-alive: пингует сам себя каждые 30 секунд"""
+    import urllib.request
     while True:
         try:
-            time.sleep(60)  # Пинг каждые 60 секунд
-            import urllib.request
+            time.sleep(30)  # Пинг КАЖДЫЕ 30 СЕКУНД (был 60)
             urllib.request.urlopen('http://localhost:5000/health', timeout=5)
-            print(f"[Keep-alive] {datetime.now().strftime('%H:%M:%S')} - Ping OK")
+            print(f"✅ Keep-alive ping #{int(time.time()) % 1000}")
         except Exception as e:
-            print(f"[Keep-alive] Ping failed: {str(e)}")
+            print(f"⚠️ Keep-alive ping failed: {str(e)}")
+            time.sleep(5)  # Повторный пинг через 5 сек при ошибке
+
+def aggressive_pinger():
+    """Дополнительный поток для еще более частых пингов"""
+    import urllib.request
+    while True:
+        try:
+            time.sleep(45)  # Дополнительный пинг каждые 45 секунд
+            urllib.request.urlopen('http://localhost:5000/', timeout=5)
+        except:
+            pass
 
 def keep_alive():
     # Flask сервер
     t = threading.Thread(target=run_flask, daemon=False)
     t.start()
     
-    # Пингер для более агрессивного keep-alive
+    # Основной пингер (каждые 30 сек)
     ping_thread = threading.Thread(target=ping_self, daemon=False)
     ping_thread.start()
     
-    print("✅ Keep-alive: Flask сервер + самопингование каждые 60 секунд")
+    # Дополнительный пингер (каждые 45 сек)
+    extra_ping_thread = threading.Thread(target=aggressive_pinger, daemon=False)
+    extra_ping_thread.start()
+    
+    print("🚀 АГРЕССИВНЫЙ Keep-alive активирован:")
+    print("   • Flask сервер на порту 5000")
+    print("   • Пинг 1: каждые 30 секунд")
+    print("   • Пинг 2: каждые 45 секунд")
 
 def main():
     print("Инициализация базы данных...")
