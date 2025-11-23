@@ -721,12 +721,12 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Вы не можете снять предупреждение, выданное модератором равного или выше ранга")
             return
 
-    db.remove_last_warn(chat_id, target_user.id)
+    db.remove_warn(chat_id, target_user.id)
     warn_count = db.get_warn_count(chat_id, target_user.id)
     max_warns = db.get_max_warns(chat_id)
     
     if db.is_banned(chat_id, target_user.id) and warn_count < max_warns:
-        db.remove_ban(chat_id, target_user.id)
+        db.unban_user(chat_id, target_user.id)
 
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
     await update.message.reply_text(
@@ -1265,7 +1265,7 @@ async def reward_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = text.split(maxsplit=1)
     reward = parts[1] if len(parts) > 1 else "Спасибо"
 
-    db.add_award(chat_id, target_user.id, reward)
+    db.set_award(chat_id, target_user.id, reward)
     await update.message.reply_text(f"✅ {target_user.first_name} награжден: {reward}")
 
 async def remove_awards_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
