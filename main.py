@@ -802,7 +802,7 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = text.split(maxsplit=1)
     reason = parts[1] if len(parts) > 1 else "Причина не указана"
 
-    db.add_ban(chat_id, target_user.id)
+    db.ban_user(chat_id, target_user.id, reason)
 
     try:
         await context.bot.ban_chat_member(chat_id, target_user.id)
@@ -919,7 +919,8 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         unmute_time = datetime.now() + timedelta(minutes=duration)
     
-    db.set_mute(chat_id, target_user.id, unmute_time)
+    reason = "Временное ограничение сообщений"
+    db.mute_user(chat_id, target_user.id, unmute_time, reason)
 
     try:
         await context.bot.restrict_chat_member(
@@ -1286,6 +1287,52 @@ async def set_max_warns_command(update: Update, context: ContextTypes.DEFAULT_TY
     db.set_max_warns(chat_id, max_warns)
     await update.message.reply_text(f"✅ Лимит предупреждений установлен: {max_warns}")
 
+async def moderation_log_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not has_access(chat_id, user_id, "1.1"):
+        await update.message.reply_text("Недостаточно прав")
+        return
+    
+    log_data = db.get_moderation_log(chat_id)
+    
+    if not log_data:
+        await update.message.reply_text("📋 История наказаний пуста")
+        return
+    
+    log_text = "📋 <b>ЖУРНАЛ МОДЕРАЦИИ</b>\n\n"
+    
+    for record in log_data[:50]:
+        user_id_punished = record['user_id']
+        punishment_type = record['punishment_type']
+        reason = record['punishment_reason'] or "Не указана"
+        date = record['punishment_date']
+        
+        if date:
+            formatted_date = date.strftime("%d.%m.%Y %H:%M")
+        else:
+            formatted_date = "Неизвестно"
+        
+        type_emoji = {
+            'предупреждение': '⚠️',
+            'мут': '🤐',
+            'бан': '🚫'
+        }.get(punishment_type, '📌')
+        
+        log_text += f"{type_emoji} <b>{punishment_type.capitalize()}</b>\n"
+        log_text += f"👤 ID: {user_id_punished}\n"
+        log_text += f"📝 Причина: {reason}\n"
+        log_text += f"🕐 Дата: {formatted_date}\n\n"
+    
+    if len(log_data) > 50:
+        log_text += f"... и ещё {len(log_data) - 50} записей"
+    
+    await update.message.reply_text(log_text, parse_mode='HTML')
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1333,6 +1380,8 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!наградить'), reward_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!снять награды'), remove_awards_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^Наградной список$'), show_participants))
+    
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^модер лог$'), moderation_log_command))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
