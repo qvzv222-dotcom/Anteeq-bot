@@ -977,30 +977,34 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Вариант 2: По юзернейму - мут @username 5 с причина
     elif len(parts) >= 4:
         username_input = parts[1].lstrip('@')
+        
+        # Парсим параметры
         try:
+            duration = int(parts[2])
+            unit_str = parts[3].lower()
+            if unit_str in ['с', 'сек', 'секунд']:
+                unit = "секунд"
+            elif unit_str in ['м', 'мин', 'минут']:
+                unit = "минут"
+            
+            if len(parts) > 4:
+                reason = " ".join(parts[4:])
+        except (ValueError, IndexError):
+            await update.message.reply_text("❌ Ошибка: неверный формат")
+            return
+        
+        # Ищем пользователя
+        try:
+            member = await context.bot.get_chat_member(chat_id, username_input)
+            target_user = member.user
+        except:
             try:
+                # Пробуем с @ префиксом
                 member = await context.bot.get_chat_member(chat_id, f"@{username_input}")
                 target_user = member.user
             except:
-                member = await context.bot.get_chat_member(chat_id, username_input)
-                target_user = member.user
-            
-            try:
-                duration = int(parts[2])
-                unit_str = parts[3].lower()
-                if unit_str in ['с', 'сек', 'секунд']:
-                    unit = "секунд"
-                elif unit_str in ['м', 'мин', 'минут']:
-                    unit = "минут"
-                
-                if len(parts) > 4:
-                    reason = " ".join(parts[4:])
-            except (ValueError, IndexError):
-                await update.message.reply_text("❌ Ошибка: неверный формат")
+                await update.message.reply_text(f"❌ Пользователь @{username_input} не найден в чате")
                 return
-        except Exception as e:
-            await update.message.reply_text(f"❌ Пользователь @{username_input} не найден")
-            return
     else:
         await update.message.reply_text("Использование: мут @username 5 с флуд\nИли ответьте на сообщение: мут 5 м")
         return
