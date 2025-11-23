@@ -974,9 +974,9 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except ValueError:
                 pass
     
-    # Вариант 2: По юзернейму - мут @username 5 с причина
+    # Вариант 2: По user_id (ID пользователя) - мут 123456789 5 с причина
     elif len(parts) >= 4:
-        username_input = parts[1].lstrip('@')
+        user_id_input = parts[1]
         
         # Парсим параметры
         try:
@@ -993,20 +993,15 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Ошибка: неверный формат")
             return
         
-        # Ищем пользователя
+        # Ищем пользователя по ID
         try:
-            member = await context.bot.get_chat_member(chat_id, username_input)
+            member = await context.bot.get_chat_member(chat_id, int(user_id_input))
             target_user = member.user
         except:
-            try:
-                # Пробуем с @ префиксом
-                member = await context.bot.get_chat_member(chat_id, f"@{username_input}")
-                target_user = member.user
-            except:
-                await update.message.reply_text(f"❌ Пользователь @{username_input} не найден в чате")
-                return
+            await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
+            return
     else:
-        await update.message.reply_text("Использование: мут @username 5 с флуд\nИли ответьте на сообщение: мут 5 м")
+        await update.message.reply_text("Использование: мут USER_ID 5 с флуд\n(где USER_ID - ID пользователя)\nИли ответьте на сообщение: мут 5 м")
         return
 
     if not target_user:
