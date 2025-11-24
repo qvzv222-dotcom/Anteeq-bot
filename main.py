@@ -1617,7 +1617,25 @@ def setup_handlers(application):
         if not update.message or not update.message.text:
             return
         chat_id = update.message.chat_id
-        text = update.message.text.strip()
+        text = update.message.text.strip().lower()
+        
+        # Known commands - don't treat as unknown
+        known_commands = [
+            'кто ты', 'кто я', 'бот', 'помощь', 'команды', '!код чата', '!импорт',
+            '!завещание', '-завещание', 'приветствие', '+приветствие', 'админы',
+            'кто создатель', 'сбор', 'назначить', '+ник другому', '-ник другому',
+            'ник', '+ник', '-ник', 'ники', 'правила', '+правила', 'снять все преды',
+            'снять все варны', 'снять пред', 'снять варн', 'варн', 'пред', 'разбан',
+            'кик', 'бан', 'размут', 'говори', 'мут', 'дк', '!наградить', '!снять награды',
+            'наградной список', 'история наказаний', 'очистить историю наказаний',
+            'наказания', '+маты', '-маты', '!преды', 'преды'
+        ]
+        
+        # Check if it's a known command
+        is_known = any(text.startswith(cmd) or cmd in text for cmd in known_commands)
+        
+        if is_known:
+            return  # Don't treat known commands as unknown
         
         if db.should_respond_to_unknown_command(chat_id, text, minutes=30):
             db.log_unknown_command(chat_id, text)
