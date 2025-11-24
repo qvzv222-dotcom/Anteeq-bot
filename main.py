@@ -1070,9 +1070,12 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Ошибка: неверный формат")
             return
         
+        # Поддержка @username из БД и Telegram API
         if user_id_input.startswith('@'):
             username = user_id_input.lstrip('@')
             lookup_id = db.get_user_id_by_username_db(chat_id, username)
+            
+            # Если не найдено в БД, ищем через Telegram API
             if not lookup_id:
                 lookup_id = await get_user_id_by_username(username, context, chat_id)
             if lookup_id:
