@@ -723,6 +723,34 @@ def get_all_known_users(chat_id: int) -> List[tuple]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
 
+def get_all_unique_users_global() -> List[int]:
+    """Get all unique user IDs from all tables across ALL chats (global)"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT DISTINCT user_id FROM (
+                SELECT user_id FROM users_ranks
+                UNION
+                SELECT user_id FROM nicks
+                UNION
+                SELECT user_id FROM warns
+                UNION
+                SELECT user_id FROM mutes
+                UNION
+                SELECT user_id FROM bans
+                UNION
+                SELECT user_id FROM awards
+            ) users
+            ORDER BY user_id
+        ''')
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [row[0] for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
 def save_chat_code(chat_id: int, chat_code: str):
     """Сохранить код чата в БД для разделения по чатам"""
     try:

@@ -1861,6 +1861,7 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^приветствие$'), show_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+приветствие'), set_welcome))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^админы$'), show_admins))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^айди$'), list_all_members_ids))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^кто создатель$'), show_creator))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^сбор$'), gather_members))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^назначить\s+'), set_rank))
