@@ -664,10 +664,11 @@ def add_member(chat_id: int, user_id: int, username: Optional[str], first_name: 
             DO UPDATE SET username = EXCLUDED.username, first_name = EXCLUDED.first_name
         ''', (chat_id, user_id, username, first_name))
         conn.commit()
+        print(f"✅ add_member: {chat_id}, {user_id}, {username}, {first_name}")
         cur.close()
         conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
+    except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
+        print(f"❌ add_member ERROR: {str(e)}")
 
 def get_all_members(chat_id: int) -> List[Dict[str, Any]]:
     try:

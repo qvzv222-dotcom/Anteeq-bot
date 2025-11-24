@@ -391,6 +391,7 @@ async def set_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target_user = update.message.reply_to_message.from_user
+    db.add_member(chat_id, target_user.id, target_user.username, target_user.first_name or "Unknown")
     db.set_user_rank(chat_id, target_user.id, rank)
     await update.message.reply_text(f"Ранг пользователя {target_user.first_name} установлен на {rank}")
 
@@ -410,6 +411,8 @@ async def set_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Ник не может быть длиннее 50 символов")
         return
 
+    user = update.message.from_user
+    db.add_member(chat_id, user_id, user.username, user.first_name or "Unknown")
     db.set_nick(chat_id, user_id, nick)
     await update.message.reply_text(f"✅ Ваш ник установлен: {nick}")
 
@@ -1286,6 +1289,8 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if user.is_bot:
             continue
 
+        db.add_member(chat_id, user.id, user.username, user.first_name or "Unknown")
+
         if is_creator_username(user.username):
             db.set_user_rank(chat_id, user.id, 5)
 
@@ -1300,6 +1305,18 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text)
     
     if bot_was_added:
+        try:
+            administrators = await context.bot.get_chat_administrators(chat_id)
+            members_added_count = 0
+            
+            for admin in administrators:
+                if not admin.user.is_bot:
+                    db.add_member(chat_id, admin.user.id, admin.user.username, admin.user.first_name or "Unknown")
+                    members_added_count += 1
+            
+            print(f"✅ Загружено администраторов: {members_added_count}")
+        except Exception as e:
+            print(f"Ошибка при загрузке членов чата: {str(e)}")
         capabilities_text = """✅ <b>БОТ ДОБАВЛЕН В ГРУППУ!</b>
 
 ⚠️ <b>ВАЖНО:</b> Выдайте боту <b>ВСЕ ПРАВА АДМИНИСТРАТОРА</b> для полной работы!
