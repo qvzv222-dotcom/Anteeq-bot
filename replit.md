@@ -4,68 +4,46 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
 
 ## Recent Changes
-- **2025-11-23**: Separated test and production bots into independent workflows ✅
-  - Removed workflow conflicts (test_bot + main.py couldn't run simultaneously)
-  - Created **Production Bot** workflow - runs main.py on Replit
-  - Test Bot now runs manually from terminal: `python test_bot.py`
-  - Test bot uses TEST_BOT_TOKEN, production uses BOT_TOKEN (separate tokens)
-  - Workflow: Test features in test_bot.py → Copy code to main.py → `git push` → Render auto-deploys
-  - No more conflicts between development and production!
-
-- **2025-11-23**: Improved access control command (дк) with all 24 commands ✅
-  - Added beautiful colored sections (🔴🟡🟢🔵🟣) for 5 command categories
-  - Shows all commands with their shortcuts and current required rank
-  - Now displays: "дк {команда} {требуемый ранг}" with emoji indicators
-
-- **2025-11-23**: Fixed link filter to not block user mentions ✅
-  - Removed aggressive `@\w+` pattern that was blocking "@username" mentions
-  - Kept only real link patterns: http://, www., t.me/
-  - Added automatic warning system for banned links
-  - Links now auto-warn user and can trigger auto-ban like profanity
-
-- **2025-11-23**: Successfully migrated to Render.com for reliable 24/7 hosting ✅
-  - Uploaded code to GitHub repository (qvzv222-dotcom/Anteeq-bot)
-  - Created Dockerfile and render.yaml for automatic deployments
-  - Deployed Docker container on Render free tier
-  - Bot is live at https://anteeq-bot.onrender.com
-  - Environment variables configured: BOT_TOKEN, DATABASE_URL
+- **2025-11-24**: Complete cleanup - production bot only ✅
+  - Removed ALL test bot files from Replit (test_main.py, test_db.py, test_profanity_list.py)
+  - Kept ONLY: main.py, db.py, profanity_list.py on Replit (copied from GitHub)
+  - Entire codebase stored on GitHub: qvzv222-dotcom/Anteeq-bot
+  - Production Bot workflow runs main.py with BOT_TOKEN
+  - **WORKFLOW:** Download from GitHub → Run on Replit → Render auto-deploys
 
 ## Project Architecture
 
-### Deployment & Development Workflow
+### CLEAN STRUCTURE: Everything on GitHub
 
-**ПОЛНОСТЬЮ РАЗДЕЛЕННЫЕ БОТЫ:**
+**Files on GitHub (Source of Truth):**
+- `main.py` - Production bot code
+- `db.py` - Database operations
+- `profanity_list.py` - Profanity filter
+- `Dockerfile` - Docker config
+- `render.yaml` - Render deployment
+- `requirements.txt` - Dependencies
+- `.gitignore` - Git ignore rules
 
-**Production Bot (Основной)** - Workflow на Replit
-- Использует файлы: `main.py`, `db.py`, `profanity_list.py`
-- Токен: `BOT_TOKEN` (из GitHub)
-- Синхронизируется с GitHub: `git pull` загружает обновления
-- Развернут на Render.com для 24/7 работы: https://anteeq-bot.onrender.com
-- Локально на Replit запускается workflow для тестирования
+**Files on Replit (Local Copy):**
+- Same 3 Python files: `main.py`, `db.py`, `profanity_list.py`
+- Copied from GitHub to run locally
+- Production Bot workflow executes main.py
 
-**Test Bot (Тестовый)** - Отдельные файлы на Replit
-- Использует файлы: `test_main.py`, `test_db.py`, `test_profanity_list.py`
-- Токен: `TEST_BOT_TOKEN` (для разработки)
-- Работает локально на Replit, полностью независим от основного
-- Не конфликтует с Production Bot
+**Deployment Flow:**
+1. **Edit code:** Modify on Replit (test locally first)
+2. **Push to GitHub:** `git add -A && git commit -m "..." && git push`
+3. **Render auto-deploys:** Docker builds and runs on render.com
+4. **Both running:** Replit (workflow) + Render (production) with same code
 
-**Рабочий процесс:**
-1. Разработка: тестируешь код в `test_main.py` + `test_db.py`
-2. Проверка: убеждаешься что всё работает в Test Bot
-3. Копирование: копируешь код из `test_main.py` → `main.py`, из `test_db.py` → `db.py`
-4. Синхронизация: `git add -A && git commit -m "message" && git push`
-5. Production: Render автоматически обновляет основного бота
-
-**Два полностью независимых workflow:**
-- `Production Bot` → запускает `main.py` (основной бот на Replit)
-- `Test Bot` → запускает `test_main.py` (тестовый бот на Replit)
+**Single Workflow:**
+- `Production Bot` → Executes `python main.py` on Replit (port 5000)
 
 **Tech Stack:**
 - Language: Python 3.11
-- Bot Framework: python-telegram-bot (async/await with job queue)
-- Database: PostgreSQL (Replit built-in Neon - общая для обоих ботов в dev)
-- HTTP Server: Flask (threaded на портах 5000/5001)
-- Deployment: Render.com (Docker для production)
+- Bot Framework: python-telegram-bot (async/await with APScheduler)
+- Database: PostgreSQL (Replit Neon + Render)
+- HTTP Server: Flask (port 5000 for health checks)
+- Deployment: Render.com Docker (24/7 production)
 - Version Control: GitHub (qvzv222-dotcom/Anteeq-bot)
 
 ### Key Features
@@ -92,12 +70,11 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - **chat_settings**: chat_id, welcome_message, rules, access_control (JSON)
 - **chat_creators**: chat_id, creator_id (chat creator information)
 
-### File Structure
+### File Structure (GitHub)
 ```
 .
-├── main.py              # Production bot (Render)
-├── test_bot.py          # Test bot for development (Replit)
-├── db.py                # Database operations (PostgreSQL)
+├── main.py              # Production bot code
+├── db.py                # Database operations
 ├── profanity_list.py    # Profanity filter word list
 ├── Dockerfile           # Docker configuration for Render
 ├── render.yaml          # Render deployment config
@@ -107,10 +84,8 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ```
 
 ### Environment Variables Required
-- `BOT_TOKEN` - Production Telegram Bot API token (Render only)
-- `TEST_BOT_TOKEN` - Test Telegram Bot API token (Replit only)
-- `DATABASE_URL` - PostgreSQL connection string (shared, auto-provided by Replit)
-- Optional: `DEEPSEEK_API_KEY` - For AI features
+- `BOT_TOKEN` - Production Telegram Bot API token (GitHub secret)
+- `DATABASE_URL` - PostgreSQL connection string (Render + Replit)
 
 ### Creator Usernames (Auto Rank 5)
 - mearlock
@@ -154,15 +129,12 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `приветствие` - Show welcome message
 - `+приветствие [text]` - Set welcome message (admin only)
 - `!код чата` - Generate chat backup code (admin only, ранг 3.5)
-- `!импорт [code]` - Import chat settings (creator only, currently unavailable)
 
 ### 👑 Administration (Ранг 3 and above)
 - `администраторы` or `админы` - List all admins with ranks
 - `кто создатель` - Show chat creator with profile link
 - `сбор` - Ping all chat members (gather command)
 - `назначить [rank]` - Assign rank to user (0-5, reply required, ранг 1.3)
-- `!завещание [@user]` - Transfer creator status to user (creator only)
-- `-завещание` - Remove creator status (creator only)
 - `дк` - Show access control settings (ранг 3.7)
 - `дк [section] [rank]` - Change access control for specific command section
 
@@ -184,63 +156,28 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ### 🔒 Access Control (ДК) Sections
 Access levels 0-5: Участник → Модератор → Наборщик → Заместитель → Глава клана → Глава альянса
 
-**Command Sections:**
-- `1.1` - Warn command (default: rank 1)
-- `1.2` - Mute/Unmute commands (default: rank 1)
-- `1.3` - Ban/Kick/Assign rank commands (default: rank 1)
-- `1.4` - View other users' warnings (default: rank 1)
-- `1.5` - Set/Remove creator status (default: rank 5)
-- `2.1` - Nickname management for self (default: rank 2)
-- `2.2` - Nickname management for others (default: rank 2)
-- `3.1` - Manage chat roles/ranks (default: rank 3)
-- `3.2` - Set welcome message (default: rank 3)
-- `3.3` - Set chat rules (default: rank 3)
-- `3.4` - Manage role settings (default: rank 3)
-- `3.5` - Generate chat code (default: rank 3)
-- `3.6` - View punishment history (default: rank 3)
-- `3.7` - Access control management (default: rank 3)
-- `3.8` - Profanity filter management (default: rank 3)
-- `4` - Reward system (default: rank 4)
-
 ## Development Workflow
 
-### Adding New Features
-1. **Edit test_bot.py** on Replit to test new commands/features
-2. **Test in a private chat** or test group with test bot
-3. **Copy working code to main.py** once verified
-4. **Commit and push to GitHub**:
+### To Add New Features:
+1. **Edit main.py, db.py, profanity_list.py** on Replit
+2. **Test locally** with Production Bot workflow
+3. **Push to GitHub:**
    ```bash
-   git add main.py
+   git add main.py db.py profanity_list.py
    git commit -m "Add new feature: [description]"
    git push
    ```
-5. **Render automatically deploys** - production bot updates within minutes
+4. **Render auto-deploys** - production bot updates within minutes
 
-### Running Both Bots Simultaneously
-- Production bot: Workflow `Telegram Bot` (python main.py) → Render deployment
-- Test bot: Workflow `Test Bot` (python test_bot.py) → Local testing
-
-### Database Notes
-- Both bots share same PostgreSQL database
-- Changes in test_bot.py affect production data (be careful!)
-- Test in isolated chats to avoid data pollution
-
-## Render Free Tier Details
-
-### Limits
-- **Bandwidth**: 100 GB/month (for Telegram bot = essentially unlimited)
-- **Uptime**: 24/7 (no sleep like Replit free tier)
-- **Build time**: 500 minutes/month shared
-- **Cost**: Completely FREE for single bot
-
-### Scaling Notes
-- Single bot can handle 1000+ users without issues
-- Bandwidth (18 MB/month typical) uses only 0.018% of 100 GB limit
-- Perfect for hobby/small-medium projects
+### Current Status:
+- ✅ Replit: Clean (only 3 production files)
+- ✅ GitHub: Single source of truth (main.py, db.py, profanity_list.py)
+- ✅ Render: 24/7 production bot
+- ✅ All code from GitHub
 
 ## User Preferences
 - Russian-language commands exclusively
 - HTML-formatted clickable Telegram profile links (tg://user?id=)
 - Moscow timezone (UTC+3) for all timestamps
-- Safe testing workflow with separate test bot
-- Development-first approach: test locally before pushing to production
+- Clean architecture: everything on GitHub, nothing extra on Replit
+- Production-first approach: code pushed to GitHub deploys automatically to Render
