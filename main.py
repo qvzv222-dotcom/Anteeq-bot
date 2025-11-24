@@ -1130,29 +1130,31 @@ async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rank = db.get_user_rank(chat_id, user_id)
     user_link = f"<a href='tg://user?id={user_id}'>{target_user.first_name}</a>"
     
-    lines = [f"<b>{user_link}</b> [{rank}]"]
+    profile = f"👤 <b>ПРОФИЛЬ:</b> {user_link} [{rank}]\n"
     
     nick = db.get_nick(chat_id, user_id)
-    if nick:
-        lines.append(f"👤 <b>{nick}</b>")
+    profile += f"📝 <b>Ник:</b> {nick if nick else 'Ник не установлен'}\n"
     
     awards = db.get_user_awards(chat_id, user_id)
     if awards:
         award_text = ", ".join(awards)
-        lines.append(f"🎁 {award_text}")
+        profile += f"🎖️ <b>Награды:</b> {award_text}\n"
+    else:
+        profile += f"🎖️ <b>Награды:</b> Нет\n"
     
     warns = db.get_warn_count(chat_id, user_id)
     has_mute = db.get_mute_time(chat_id, user_id) is not None
     
     if warns > 0 or has_mute:
-        punish_parts = []
+        punish_text = []
         if warns > 0:
-            punish_parts.append(f"Варны: {warns}")
+            punish_text.append(f"Варны: {warns}")
         if has_mute:
-            punish_parts.append("Мут: ✓")
-        lines.append(f"⚠️ {', '.join(punish_parts)}")
+            punish_text.append("Мут: активен")
+        profile += f"⚠️ <b>Наказания:</b> {', '.join(punish_text)}"
+    else:
+        profile += f"⚠️ <b>Наказания:</b> Наказаний нет"
     
-    profile = "\n".join(lines)
     await update.message.reply_text(profile, parse_mode='HTML')
 
 async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1163,29 +1165,31 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rank = db.get_user_rank(chat_id, user_id)
     user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
     
-    lines = [f"<b>{user_link}</b> [{rank}]"]
+    profile = f"👤 <b>ВАШ ПРОФИЛЬ:</b> {user_link} [{rank}]\n"
     
     nick = db.get_nick(chat_id, user_id)
-    if nick:
-        lines.append(f"👤 <b>{nick}</b>")
+    profile += f"📝 <b>Ник:</b> {nick if nick else 'Ник не установлен'}\n"
     
     awards = db.get_user_awards(chat_id, user_id)
     if awards:
         award_text = ", ".join(awards)
-        lines.append(f"🎁 {award_text}")
+        profile += f"🎖️ <b>Награды:</b> {award_text}\n"
+    else:
+        profile += f"🎖️ <b>Награды:</b> Нет\n"
     
     warns = db.get_warn_count(chat_id, user_id)
     has_mute = db.get_mute_time(chat_id, user_id) is not None
     
     if warns > 0 or has_mute:
-        punish_parts = []
+        punish_text = []
         if warns > 0:
-            punish_parts.append(f"Варны: {warns}")
+            punish_text.append(f"Варны: {warns}")
         if has_mute:
-            punish_parts.append("Мут: ✓")
-        lines.append(f"⚠️ {', '.join(punish_parts)}")
+            punish_text.append("Мут: активен")
+        profile += f"⚠️ <b>Наказания:</b> {', '.join(punish_text)}"
+    else:
+        profile += f"⚠️ <b>Наказания:</b> Наказаний нет"
     
-    profile = "\n".join(lines)
     await update.message.reply_text(profile, parse_mode='HTML')
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
