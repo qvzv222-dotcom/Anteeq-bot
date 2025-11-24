@@ -55,6 +55,24 @@ def has_access(chat_id: int, user_id: int, section: str) -> bool:
     user_rank = get_user_rank(chat_id, user_id)
     return user_rank >= required_rank
 
+async def get_user_id_by_username(username: str, context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> Optional[int]:
+    if not username:
+        return None
+    username = username.lstrip('@')
+    
+    try:
+        all_user_ids = db.get_all_unique_users(chat_id)
+        for user_id in all_user_ids:
+            try:
+                member = await context.bot.get_chat_member(chat_id, user_id)
+                if member.user.username and member.user.username.lower() == username.lower():
+                    return user_id
+            except:
+                pass
+        return None
+    except:
+        return None
+
 async def check_and_set_creator_rank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.new_chat_members:
         return
@@ -598,9 +616,24 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = await get_user_id_by_username(username, context, chat_id)
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            else:
+                await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                return
 
     if not target_user:
-        await update.message.reply_text("Использование: ответом на сообщение 'варн [причина]'")
+        await update.message.reply_text("Использование: ответом на сообщение 'варн [причина]' или 'варн @username [причина]'")
         return
 
     if target_user.id == user_id:
@@ -610,6 +643,8 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if target_user.id == context.bot.id:
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
+
+    db.add_member(chat_id, target_user.id, target_user.username, target_user.first_name or "Unknown")
 
     target_rank = db.get_user_rank(chat_id, target_user.id)
     if target_rank >= 3:
@@ -702,11 +737,34 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Недостаточно прав для снятия предупреждений")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'снять пред'")
-        return
+    target_user = None
+    text = update.message.text.strip()
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = db.get_user_id_by_username_db(chat_id, username)
+            
+            if not target_id:
+                target_id = await get_user_id_by_username(username, context, chat_id)
+            
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            else:
+                await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("Использование: ответьте на сообщение или 'снять пред @username'")
+        return
 
     if target_user.id == context.bot.id:
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
@@ -757,11 +815,34 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Недостаточно прав для снятия предупреждений")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'снять все преды'")
-        return
+    target_user = None
+    text = update.message.text.strip()
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = db.get_user_id_by_username_db(chat_id, username)
+            
+            if not target_id:
+                target_id = await get_user_id_by_username(username, context, chat_id)
+            
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            else:
+                await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("Использование: ответьте на сообщение или 'снять все преды @username'")
+        return
     target_rank = db.get_user_rank(chat_id, target_user.id)
 
     if not is_creator and user_rank < target_rank:
@@ -800,11 +881,29 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'бан [причина]'")
+    target_user = None
+    text = update.message.text.strip()
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = await get_user_id_by_username(username, context, chat_id)
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    pass
+    
+    if not target_user:
+        await update.message.reply_text("Использование: ответьте на сообщение или 'бан @username [причина]'")
         return
-
-    target_user = update.message.reply_to_message.from_user
+    
+    parts = text.split(maxsplit=1)
+    reason = parts[1] if len(parts) > 1 else "Причина не указана"
 
     if target_user.id == user_id:
         await update.message.reply_text("❌ Вы не можете банить себя", parse_mode='HTML')
@@ -814,10 +913,7 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
-    text = update.message.text.strip()
-    parts = text.split(maxsplit=1)
-    reason = parts[1] if len(parts) > 1 else "Причина не указана"
-
+    db.add_member(chat_id, target_user.id, target_user.username, target_user.first_name or "Unknown")
     db.ban_user(chat_id, target_user.id, reason)
 
     try:
@@ -840,11 +936,26 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'разбан'")
+    target_user = None
+    text = update.message.text.strip()
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = await get_user_id_by_username(username, context, chat_id)
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    pass
+    
+    if not target_user:
+        await update.message.reply_text("Использование: ответьте на сообщение или 'разбан @username'")
         return
-
-    target_user = update.message.reply_to_message.from_user
 
     db.unban_user(chat_id, target_user.id)
 
@@ -863,11 +974,30 @@ async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'кик'")
-        return
+    target_user = None
+    text = update.message.text.strip()
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = await get_user_id_by_username(username, context, chat_id)
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            else:
+                await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("Использование: ответьте на сообщение или 'кик @username'")
+        return
 
     if target_user.id == user_id:
         await update.message.reply_text("❌ Вы не можете кикать себя", parse_mode='HTML')
@@ -901,7 +1031,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     unit = "минут"
     reason = "Временное ограничение сообщений"
     
-    # Вариант 1: Ответ на сообщение - мут 5 с причина
+    # Вариант 1: Ответ на сообщение - мут 5 м причина
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
         if len(parts) > 1:
@@ -917,8 +1047,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         reason = " ".join(parts[3:])
             except ValueError:
                 pass
-    
-    # Вариант 2: По user_id - мут 123456789 5 с причина
+    # Вариант 2: По @username или числовому ID - мут @username 5 м причина или мут 123456789 5 м причина
     elif len(parts) >= 4:
         user_id_input = parts[1]
         
@@ -937,27 +1066,40 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Ошибка: неверный формат")
             return
         
-        # Проверяем, не пытается ли пользователь использовать @username
+        # Поддержка @username из БД и Telegram API
         if user_id_input.startswith('@'):
-            await update.message.reply_text(f"❌ @username не поддерживается (ограничение Telegram API)\n\n💡 Вместо этого:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ Используйте числовой ID: мут 123456789 5 с причина\n\n📱 Как узнать ID: пересчитайте на сообщение пользователя и используйте его ID")
-            return
-        
-        # Ищем пользователя по числовому ID
-        try:
-            lookup_id = int(user_id_input)
-        except ValueError:
-            await update.message.reply_text(f"❌ ID должно быть числом (например: 123456789)")
-            return
-        
-        # Получаем информацию о пользователе
-        try:
-            member = await context.bot.get_chat_member(chat_id, lookup_id)
-            target_user = member.user
-        except Exception as e:
-            await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
-            return
+            username = user_id_input.lstrip('@')
+            lookup_id = db.get_user_id_by_username_db(chat_id, username)
+            
+            # Если не найдено в БД, ищем через Telegram API
+            if not lookup_id:
+                lookup_id = await get_user_id_by_username(username, context, chat_id)
+            
+            if lookup_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, lookup_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            else:
+                await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                return
+        else:
+            # Ищем пользователя по числовому ID
+            try:
+                lookup_id = int(user_id_input)
+                try:
+                    member = await context.bot.get_chat_member(chat_id, lookup_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь с ID {user_id_input} не найден в чате")
+                    return
+            except ValueError:
+                await update.message.reply_text(f"❌ Использовать @username или числовой ID")
+                return
     else:
-        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По ID: мут 123456789 5 с причина")
+        await update.message.reply_text("Использование:\n1️⃣ Ответьте на сообщение: мут 5 м причина\n2️⃣ По @username: мут @username 5 м причина\n3️⃣ По ID: мут 123456789 5 м причина")
         return
 
     if not target_user:
@@ -975,6 +1117,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not reason or reason == "Временное ограничение сообщений":
         reason = "Шоб не втыкал"
 
+    db.add_member(chat_id, target_user.id, target_user.username, target_user.first_name or "Unknown")
     db.mute_user(chat_id, target_user.id, reason)
 
     try:
@@ -1001,11 +1144,34 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Недостаточно прав")
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Использование: ответьте на сообщение пользователя и напишите 'размут'")
-        return
+    target_user = None
+    text = update.message.text.strip()
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        username_match = re.search(r'@(\w+)', text)
+        if username_match:
+            username = username_match.group(1)
+            target_id = db.get_user_id_by_username_db(chat_id, username)
+            
+            if not target_id:
+                target_id = await get_user_id_by_username(username, context, chat_id)
+            
+            if target_id:
+                try:
+                    member = await context.bot.get_chat_member(chat_id, target_id)
+                    target_user = member.user
+                except:
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    return
+            else:
+                await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                return
 
-    target_user = update.message.reply_to_message.from_user
+    if not target_user:
+        await update.message.reply_text("Использование: ответьте на сообщение или 'размут @username'")
+        return
 
     db.unmute_user(chat_id, target_user.id)
 
