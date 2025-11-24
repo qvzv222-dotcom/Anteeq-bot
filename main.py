@@ -1651,11 +1651,14 @@ def setup_handlers(application):
         if is_known:
             return  # Don't treat known commands as unknown
         
-        if db.should_respond_to_unknown_command(chat_id, text, minutes=30):
-            db.log_unknown_command(chat_id, text)
-            await update.message.reply_text("❓ Неизвестная команда")
-        else:
-            db.log_unknown_command(chat_id, text)
+        try:
+            if db.should_respond_to_unknown_command(chat_id, text, minutes=30):
+                db.log_unknown_command(chat_id, text)
+                await update.message.reply_text("❓ Неизвестная команда")
+            else:
+                db.log_unknown_command(chat_id, text)
+        except:
+            pass
     
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_command), group=200)
 
