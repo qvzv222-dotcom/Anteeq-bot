@@ -1850,7 +1850,17 @@ async def list_all_members_ids(update: Update, context: ContextTypes.DEFAULT_TYP
     except Exception as e:
         await update.message.reply_text(f"❌ Ошибка: {str(e)}")
 
+async def save_user_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Сохраняем username ВСЕХ пользователей в таблицу members"""
+    if update.message and update.message.from_user:
+        chat_id = update.message.chat_id
+        user = update.message.from_user
+        db.add_member(chat_id, user.id, user.username, user.first_name or "Unknown")
+
 def setup_handlers(application):
+    # Сохраняем info о пользователе для КАЖДОГО сообщения - ПЕРВЫЙ handler (group=-100)
+    application.add_handler(MessageHandler(filters.ALL, save_user_info), group=-100)
+    
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
     
