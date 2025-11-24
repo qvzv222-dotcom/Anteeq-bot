@@ -1107,21 +1107,39 @@ async def access_control_command(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text(f"✅ Раздел {section} теперь требует ранг {rank} {rank_emoji}")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    commands_text = """📚 СПРАВКА ПО КОМАНДАМ:
+    commands_text = """📚 <b>СПРАВКА ПО КОМАНДАМ:</b>
 
-<b>👤 Ники:</b>
+<b>👤 НИКИ:</b>
 <code>+ник [ник]</code> - установить свой ник
 <code>-ник</code> - удалить свой ник
+<code>ник</code> - посмотреть свой ник
 <code>ники</code> - список всех ников
 
-<b>ℹ️ Информация:</b>
+<b>⚠️ НАКАЗАНИЯ:</b>
+<code>варн [причина]</code> - дать варн (ответ на сообщение)
+<code>преды</code> - показать варны
+<code>мут [причина]</code> - замутить пользователя
+<code>размут</code> - размутить
+<code>бан [причина]</code> - забанить
+<code>разбан</code> - разбанить
+
+<b>ℹ️ ИНФОРМАЦИЯ:</b>
+<code>кто я</code> - мой профиль
+<code>кто ты</code> - профиль пользователя (ответ)
 <code>админы</code> - список администраторов
-<code>помощь</code> - эта справка"""
+<code>кто создатель</code> - создатель чата
+<code>помощь</code> или <code>команды</code> - эта справка
+
+<b>⚙️ НАСТРОЙКИ:</b>
+<code>+правила [текст]</code> - установить правила
+<code>правила</code> - показать правила
+<code>+маты</code> - включить фильтр мата
+<code>-маты</code> - выключить фильтр мата"""
 
     await update.message.reply_text(commands_text, parse_mode='HTML')
 
 async def commands_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_command(update, context)
+    await help_command(update, context)
 
 async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
