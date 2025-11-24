@@ -1128,31 +1128,27 @@ async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = target_user.id
     
     rank = db.get_user_rank(chat_id, user_id)
-    rank_names = {0: "Участник", 1: "Модератор", 2: "Наборщик", 3: "Заместитель", 4: "Глава клана", 5: "Глава альянса"}
-    rank_text = rank_names.get(rank, f"Ранг {rank}")
-    
     user_link = f"<a href='tg://user?id={user_id}'>{target_user.first_name}</a>"
     profile = f"<b>{user_link}</b> [{rank}]"
     
     nick = db.get_nick(chat_id, user_id)
     if nick:
-        profile += f"\n👤 Ник: <b>{nick}</b>"
+        profile += f"\n👤 <b>{nick}</b>"
     
     awards = db.get_user_awards(chat_id, user_id)
     if awards:
-        award_list = ", ".join([f"🎁 {a['award_name']}" for a in awards])
-        profile += f"\n{award_list}"
+        award_list = ", ".join(awards)
+        profile += f"\n🎁 <b>{award_list}</b>"
     
-    punishments = db.get_user_punishment_history(chat_id, user_id)
-    if punishments:
-        mutes = sum(1 for p in punishments if p['punishment_type'] == 'мут')
-        warns = sum(1 for p in punishments if p['punishment_type'] == 'предупреждение')
-        if mutes or warns:
-            profile += "\n⚠️ Наказания:"
-            if warns:
-                profile += f" {warns}⚠️"
-            if mutes:
-                profile += f" {mutes}🤐"
+    warns = db.get_warn_count(chat_id, user_id)
+    has_mute = db.get_mute_time(chat_id, user_id) is not None
+    
+    if warns > 0 or has_mute:
+        profile += "\n⚠️"
+        if warns > 0:
+            profile += f" Варны: {warns}"
+        if has_mute:
+            profile += f" Мут: ✓"
     
     await update.message.reply_text(profile, parse_mode='HTML')
 
@@ -1162,31 +1158,27 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     
     rank = db.get_user_rank(chat_id, user_id)
-    rank_names = {0: "Участник", 1: "Модератор", 2: "Наборщик", 3: "Заместитель", 4: "Глава клана", 5: "Глава альянса"}
-    rank_text = rank_names.get(rank, f"Ранг {rank}")
-    
     user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
     profile = f"<b>{user_link}</b> [{rank}]"
     
     nick = db.get_nick(chat_id, user_id)
     if nick:
-        profile += f"\n👤 Ник: <b>{nick}</b>"
+        profile += f"\n👤 <b>{nick}</b>"
     
     awards = db.get_user_awards(chat_id, user_id)
     if awards:
-        award_list = ", ".join([f"🎁 {a['award_name']}" for a in awards])
-        profile += f"\n{award_list}"
+        award_list = ", ".join(awards)
+        profile += f"\n🎁 <b>{award_list}</b>"
     
-    punishments = db.get_user_punishment_history(chat_id, user_id)
-    if punishments:
-        mutes = sum(1 for p in punishments if p['punishment_type'] == 'мут')
-        warns = sum(1 for p in punishments if p['punishment_type'] == 'предупреждение')
-        if mutes or warns:
-            profile += "\n⚠️ Наказания:"
-            if warns:
-                profile += f" {warns}⚠️"
-            if mutes:
-                profile += f" {mutes}🤐"
+    warns = db.get_warn_count(chat_id, user_id)
+    has_mute = db.get_mute_time(chat_id, user_id) is not None
+    
+    if warns > 0 or has_mute:
+        profile += "\n⚠️"
+        if warns > 0:
+            profile += f" Варны: {warns}"
+        if has_mute:
+            profile += f" Мут: ✓"
     
     await update.message.reply_text(profile, parse_mode='HTML')
 
