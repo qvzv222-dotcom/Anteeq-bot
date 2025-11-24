@@ -61,14 +61,11 @@ async def get_user_id_by_username(username: str, context: ContextTypes.DEFAULT_T
     username = username.lstrip('@')
     
     try:
-        all_user_ids = db.get_all_unique_users(chat_id)
-        for user_id in all_user_ids:
-            try:
-                member = await context.bot.get_chat_member(chat_id, user_id)
-                if member.user.username and member.user.username.lower() == username.lower():
-                    return user_id
-            except:
-                pass
+        # Получаем всех членов из таблицы members которая содержит username для ВСЕх пользователей
+        all_members = db.get_all_members(chat_id)
+        for member_dict in all_members:
+            if member_dict.get('username') and member_dict['username'].lower() == username.lower():
+                return member_dict['user_id']
         return None
     except:
         return None
