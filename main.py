@@ -1271,6 +1271,10 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_rank = db.get_user_rank(chat_id, user_id)
         
         if user_rank >= 3:
+            try:
+                await update.message.delete()
+            except:
+                pass
             return
         
         await update.message.delete()
@@ -1309,6 +1313,10 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user_rank < link_posting_rank:
         if user_rank >= 3:
+            try:
+                await update.message.delete()
+            except:
+                pass
             return
         
         text = update.message.text
