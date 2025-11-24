@@ -25,9 +25,6 @@ author = "agent"
 task = "shell.exec"
 args = "python test_main.py"
 
-[workflows.workflow.metadata]
-outputType = "console"
-
 [[ports]]
 localPort = 5000
 externalPort = 5000
