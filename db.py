@@ -730,7 +730,7 @@ def get_all_unique_users_global() -> List[int]:
         cur = conn.cursor()
         cur.execute('''
             SELECT DISTINCT user_id FROM (
-                SELECT user_id FROM users_ranks
+                SELECT user_id FROM admins
                 UNION
                 SELECT user_id FROM nicks
                 UNION
