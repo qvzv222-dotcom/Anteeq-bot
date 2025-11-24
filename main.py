@@ -1633,42 +1633,6 @@ def setup_handlers(application):
     
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
-    
-    # Handle unknown commands with 30-minute time limit
-    async def handle_unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if not update.message or not update.message.text:
-            return
-        chat_id = update.message.chat_id
-        text = update.message.text.strip().lower()
-        
-        # Known commands - don't treat as unknown
-        known_commands = [
-            'кто ты', 'кто я', 'бот', 'помощь', 'команды', '!код чата', '!импорт',
-            '!завещание', '-завещание', 'приветствие', '+приветствие', 'админы',
-            'кто создатель', 'сбор', 'назначить', '+ник другому', '-ник другому',
-            'ник', '+ник', '-ник', 'ники', 'правила', '+правила', 'снять все преды',
-            'снять все варны', 'снять пред', 'снять варн', 'варн', 'пред', 'разбан',
-            'кик', 'бан', 'размут', 'говори', 'мут', 'дк', '!наградить', '!снять награды',
-            'наградной список', 'история наказаний', 'очистить историю наказаний',
-            'наказания', '+маты', '-маты', '!преды', 'преды'
-        ]
-        
-        # Check if it's a known command
-        is_known = any(text.startswith(cmd) or cmd in text for cmd in known_commands)
-        
-        if is_known:
-            return  # Don't treat known commands as unknown
-        
-        try:
-            if db.should_respond_to_unknown_command(chat_id, text, minutes=30):
-                db.log_unknown_command(chat_id, text)
-                await update.message.reply_text("❓ Неизвестная команда")
-            else:
-                db.log_unknown_command(chat_id, text)
-        except:
-            pass
-    
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_command), group=200)
 
 def main():
     print("Инициализация базы данных...")
