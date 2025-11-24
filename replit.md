@@ -176,6 +176,7 @@ Access levels 0-5: Участник → Модератор → Наборщик 
 - ✅ All code from GitHub
 
 ## User Preferences
+- **Communication:** Russian language only (agent should speak Russian with user)
 - Russian-language commands exclusively
 - HTML-formatted clickable Telegram profile links (tg://user?id=)
 - Moscow timezone (UTC+3) for all timestamps
