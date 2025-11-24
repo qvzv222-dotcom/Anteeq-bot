@@ -608,6 +608,11 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Вы не можете наказать бота", parse_mode='HTML')
         return
 
+    target_rank = db.get_user_rank(chat_id, target_user.id)
+    if target_rank >= 3:
+        await update.message.reply_text("❌ Вы не можете наказать администратора", parse_mode='HTML')
+        return
+
     db.warn_user(chat_id, target_user.id, user_id, reason)
     warn_count = db.get_warn_count(chat_id, target_user.id)
     user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
@@ -1263,6 +1268,10 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if contains_profanity(text):
         user = update.message.from_user
         user_id = user.id
+        user_rank = db.get_user_rank(chat_id, user_id)
+        
+        if user_rank >= 3:
+            return
         
         await update.message.delete()
         
@@ -1280,7 +1289,7 @@ async def check_profanity(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
             await context.bot.send_message(
                 chat_id,
-                f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count}+ предупреждения)"
+                f"❌ Пользователь {user.first_name} забанен за использование мата ({warn_count} предупреждений)"
             )
         else:
             user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
@@ -1299,6 +1308,9 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link_posting_rank = db.get_link_posting_rank(chat_id)
     
     if user_rank < link_posting_rank:
+        if user_rank >= 3:
+            return
+        
         text = update.message.text
         link_patterns = [
             r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
@@ -1323,7 +1335,7 @@ async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         pass
                     await context.bot.send_message(
                         chat_id,
-                        f"❌ Пользователь {user.first_name} забанен за распространение ссылок ({warn_count}+ предупреждений)"
+                        f"❌ Пользователь {user.first_name} забанен за распространение ссылок ({warn_count} предупреждений)"
                     )
                 else:
                     user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
