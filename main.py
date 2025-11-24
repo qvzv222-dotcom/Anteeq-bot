@@ -1129,27 +1129,30 @@ async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     rank = db.get_user_rank(chat_id, user_id)
     user_link = f"<a href='tg://user?id={user_id}'>{target_user.first_name}</a>"
-    profile = f"<b>{user_link}</b> [{rank}]"
+    
+    lines = [f"<b>{user_link}</b> [{rank}]"]
     
     nick = db.get_nick(chat_id, user_id)
     if nick:
-        profile += f"\n👤 <b>{nick}</b>"
+        lines.append(f"👤 <b>{nick}</b>")
     
     awards = db.get_user_awards(chat_id, user_id)
     if awards:
-        award_list = ", ".join(awards)
-        profile += f"\n🎁 <b>{award_list}</b>"
+        award_text = ", ".join(awards)
+        lines.append(f"🎁 {award_text}")
     
     warns = db.get_warn_count(chat_id, user_id)
     has_mute = db.get_mute_time(chat_id, user_id) is not None
     
     if warns > 0 or has_mute:
-        profile += "\n⚠️"
+        punish_parts = []
         if warns > 0:
-            profile += f" Варны: {warns}"
+            punish_parts.append(f"Варны: {warns}")
         if has_mute:
-            profile += f" Мут: ✓"
+            punish_parts.append("Мут: ✓")
+        lines.append(f"⚠️ {', '.join(punish_parts)}")
     
+    profile = "\n".join(lines)
     await update.message.reply_text(profile, parse_mode='HTML')
 
 async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1159,27 +1162,30 @@ async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     rank = db.get_user_rank(chat_id, user_id)
     user_link = f"<a href='tg://user?id={user_id}'>{user.first_name}</a>"
-    profile = f"<b>{user_link}</b> [{rank}]"
+    
+    lines = [f"<b>{user_link}</b> [{rank}]"]
     
     nick = db.get_nick(chat_id, user_id)
     if nick:
-        profile += f"\n👤 <b>{nick}</b>"
+        lines.append(f"👤 <b>{nick}</b>")
     
     awards = db.get_user_awards(chat_id, user_id)
     if awards:
-        award_list = ", ".join(awards)
-        profile += f"\n🎁 <b>{award_list}</b>"
+        award_text = ", ".join(awards)
+        lines.append(f"🎁 {award_text}")
     
     warns = db.get_warn_count(chat_id, user_id)
     has_mute = db.get_mute_time(chat_id, user_id) is not None
     
     if warns > 0 or has_mute:
-        profile += "\n⚠️"
+        punish_parts = []
         if warns > 0:
-            profile += f" Варны: {warns}"
+            punish_parts.append(f"Варны: {warns}")
         if has_mute:
-            profile += f" Мут: ✓"
+            punish_parts.append("Мут: ✓")
+        lines.append(f"⚠️ {', '.join(punish_parts)}")
     
+    profile = "\n".join(lines)
     await update.message.reply_text(profile, parse_mode='HTML')
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
