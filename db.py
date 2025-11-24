@@ -723,34 +723,6 @@ def get_all_known_users(chat_id: int) -> List[tuple]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
 
-def get_all_unique_users_global() -> List[int]:
-    """Get all unique user IDs from all tables across ALL chats (global)"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            SELECT DISTINCT user_id FROM (
-                SELECT user_id FROM admins
-                UNION
-                SELECT user_id FROM nicks
-                UNION
-                SELECT user_id FROM warns
-                UNION
-                SELECT user_id FROM mutes
-                UNION
-                SELECT user_id FROM bans
-                UNION
-                SELECT user_id FROM awards
-            ) users
-            ORDER BY user_id
-        ''')
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [row[0] for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
-
 def save_chat_code(chat_id: int, chat_code: str):
     """Сохранить код чата в БД для разделения по чатам"""
     try:
@@ -823,6 +795,76 @@ def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
         return [dict(row) for row in results]
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
+
+def get_all_unique_users(chat_id: int) -> List[int]:
+    """Get all unique user IDs from all tables for a chat"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT DISTINCT user_id FROM (
+                SELECT user_id FROM admins WHERE chat_id = %s
+                UNION
+                SELECT user_id FROM nicks WHERE chat_id = %s
+                UNION
+                SELECT user_id FROM warns WHERE chat_id = %s
+                UNION
+                SELECT user_id FROM mutes WHERE chat_id = %s
+                UNION
+                SELECT user_id FROM bans WHERE chat_id = %s
+                UNION
+                SELECT user_id FROM awards WHERE chat_id = %s
+            ) users
+            ORDER BY user_id
+        ''', (chat_id, chat_id, chat_id, chat_id, chat_id, chat_id))
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [row[0] for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
+def get_all_unique_users_global() -> List[int]:
+    """Get all unique user IDs from all tables across ALL chats (global)"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT DISTINCT user_id FROM (
+                SELECT user_id FROM admins
+                UNION
+                SELECT user_id FROM nicks
+                UNION
+                SELECT user_id FROM warns
+                UNION
+                SELECT user_id FROM mutes
+                UNION
+                SELECT user_id FROM bans
+                UNION
+                SELECT user_id FROM awards
+            ) users
+            ORDER BY user_id
+        ''')
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [row[0] for row in results]
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return []
+
+def get_user_id_by_username_db(chat_id: int, username: str) -> Optional[int]:
+    """Search for user ID by username in the chat"""
+    try:
+        username = username.lstrip('@')
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT user_id FROM members WHERE chat_id = %s AND username = %s', (chat_id, username))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else None
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return None
 
 def get_all_awards(chat_id: int) -> Dict[int, str]:
     try:

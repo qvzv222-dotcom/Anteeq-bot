@@ -14,7 +14,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-import db
+import test_db as db
 from profanity_list import contains_profanity
 
 app = Flask(__name__)
@@ -617,9 +617,7 @@ async def warn_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username_match = re.search(r'@(\w+)', text)
         if username_match:
             username = username_match.group(1)
-            target_id = db.get_user_id_by_username_db(chat_id, username)
-            if not target_id:
-                target_id = await get_user_id_by_username(username, context, chat_id)
+            target_id = await get_user_id_by_username(username, context, chat_id)
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -746,8 +744,10 @@ async def remove_warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if username_match:
             username = username_match.group(1)
             target_id = db.get_user_id_by_username_db(chat_id, username)
+            
             if not target_id:
                 target_id = await get_user_id_by_username(username, context, chat_id)
+            
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -822,8 +822,10 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if username_match:
             username = username_match.group(1)
             target_id = db.get_user_id_by_username_db(chat_id, username)
+            
             if not target_id:
                 target_id = await get_user_id_by_username(username, context, chat_id)
+            
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -838,6 +840,7 @@ async def remove_all_warns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not target_user:
         await update.message.reply_text("Использование: ответьте на сообщение или 'снять все преды @username'")
         return
+
     target_rank = db.get_user_rank(chat_id, target_user.id)
 
     if not is_creator and user_rank < target_rank:
@@ -885,9 +888,7 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username_match = re.search(r'@(\w+)', text)
         if username_match:
             username = username_match.group(1)
-            target_id = db.get_user_id_by_username_db(chat_id, username)
-            if not target_id:
-                target_id = await get_user_id_by_username(username, context, chat_id)
+            target_id = await get_user_id_by_username(username, context, chat_id)
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -942,9 +943,7 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username_match = re.search(r'@(\w+)', text)
         if username_match:
             username = username_match.group(1)
-            target_id = db.get_user_id_by_username_db(chat_id, username)
-            if not target_id:
-                target_id = await get_user_id_by_username(username, context, chat_id)
+            target_id = await get_user_id_by_username(username, context, chat_id)
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -983,8 +982,10 @@ async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if username_match:
             username = username_match.group(1)
             target_id = db.get_user_id_by_username_db(chat_id, username)
+            
             if not target_id:
                 target_id = await get_user_id_by_username(username, context, chat_id)
+            
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -1075,6 +1076,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Если не найдено в БД, ищем через Telegram API
             if not lookup_id:
                 lookup_id = await get_user_id_by_username(username, context, chat_id)
+            
             if lookup_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, lookup_id)
@@ -1154,8 +1156,10 @@ async def unmute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if username_match:
             username = username_match.group(1)
             target_id = db.get_user_id_by_username_db(chat_id, username)
+            
             if not target_id:
                 target_id = await get_user_id_by_username(username, context, chat_id)
+            
             if target_id:
                 try:
                     member = await context.bot.get_chat_member(chat_id, target_id)
@@ -1470,6 +1474,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if bot_was_added:
         try:
+            # Получить администраторов чата (они гарантированно есть)
             administrators = await context.bot.get_chat_administrators(chat_id)
             members_added_count = 0
             
@@ -1481,6 +1486,7 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"✅ Загружено администраторов: {members_added_count}")
         except Exception as e:
             print(f"Ошибка при загрузке членов чата: {str(e)}")
+        
         capabilities_text = """✅ <b>БОТ ДОБАВЛЕН В ГРУППУ!</b>
 
 ⚠️ <b>ВАЖНО:</b> Выдайте боту <b>ВСЕ ПРАВА АДМИНИСТРАТОРА</b> для полной работы!
