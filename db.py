@@ -670,6 +670,20 @@ def add_member(chat_id: int, user_id: int, username: Optional[str], first_name: 
     except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
         print(f"❌ add_member ERROR: {str(e)}")
 
+def get_user_id_by_username_db(chat_id: int, username: str) -> Optional[int]:
+    """Поиск user_id по username в таблице members"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT user_id FROM members WHERE chat_id = %s AND username = %s LIMIT 1', 
+                    (chat_id, username))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return result[0] if result else None
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return None
+
 def get_all_members(chat_id: int) -> List[Dict[str, Any]]:
     try:
         conn = get_connection()
