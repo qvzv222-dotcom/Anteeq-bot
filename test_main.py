@@ -61,11 +61,23 @@ async def get_user_id_by_username(username: str, context: ContextTypes.DEFAULT_T
     username = username.lstrip('@')
     
     try:
-        # Получаем всех членов из таблицы members которая содержит username для ВСЕх пользователей
+        # Получаем всех членов из таблицы members
         all_members = db.get_all_members(chat_id)
         for member_dict in all_members:
             if member_dict.get('username') and member_dict['username'].lower() == username.lower():
                 return member_dict['user_id']
+        
+        # Fallback: Если не нашли в members, проверить администраторов
+        try:
+            administrators = await context.bot.get_chat_administrators(chat_id)
+            for admin in administrators:
+                if admin.user.username and admin.user.username.lower() == username.lower():
+                    # Нашли администратора! Сохраняем в members и возвращаем ID
+                    db.add_member(chat_id, admin.user.id, admin.user.username, admin.user.first_name or "Unknown")
+                    return admin.user.id
+        except:
+            pass
+        
         return None
     except:
         return None
