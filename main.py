@@ -1474,16 +1474,31 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if bot_was_added:
         try:
-            # Получить администраторов чата (они гарантированно есть)
+            # Получить администраторов чата
             administrators = await context.bot.get_chat_administrators(chat_id)
             members_added_count = 0
+            loaded_user_ids = set()
             
             for admin in administrators:
                 if not admin.user.is_bot:
                     db.add_member(chat_id, admin.user.id, admin.user.username, admin.user.first_name or "Unknown")
+                    loaded_user_ids.add(admin.user.id)
                     members_added_count += 1
             
-            print(f"✅ Загружено администраторов: {members_added_count}")
+            # Также загрузить всех пользователей из таблиц warns, mutes, bans, nicks
+            all_user_ids = db.get_all_unique_users(chat_id)
+            for user_id in all_user_ids:
+                if user_id not in loaded_user_ids:
+                    try:
+                        member = await context.bot.get_chat_member(chat_id, user_id)
+                        if member.user:
+                            db.add_member(chat_id, user_id, member.user.username, member.user.first_name or "Unknown")
+                            loaded_user_ids.add(user_id)
+                            members_added_count += 1
+                    except:
+                        pass
+            
+            print(f"✅ Загружено членов чата: {members_added_count}")
         except Exception as e:
             print(f"Ошибка при загрузке членов чата: {str(e)}")
         
