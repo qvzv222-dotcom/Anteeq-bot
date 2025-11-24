@@ -119,17 +119,6 @@ def init_database():
         )
     ''')
     
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS members (
-            chat_id BIGINT,
-            user_id BIGINT,
-            username VARCHAR(255),
-            first_name VARCHAR(255),
-            PRIMARY KEY (chat_id, user_id),
-            FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE
-        )
-    ''')
-    
     conn.commit()
     cur.close()
     conn.close()
@@ -178,18 +167,6 @@ def get_user_rank(chat_id: int, user_id: int) -> int:
         return result[0] if result else 0
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return 0
-
-def get_all_admins(chat_id: int) -> Dict[int, int]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT user_id, rank FROM admins WHERE chat_id = %s ORDER BY rank DESC', (chat_id,))
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return {user_id: rank for user_id, rank in results}
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return {}
 
 def set_nick(chat_id: int, user_id: int, nick: str):
     try:
@@ -530,23 +507,6 @@ def get_access_control(chat_id: int) -> Dict:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return {"1.1": 1, "1.2": 1, "1.3": 3, "1.4": 1, "1.5": 1, "2.1": 0, "2.2": 2, "3.1": 3, "3.2": 3, "4": 4, "7": 1}
 
-def set_access_control_section(chat_id: int, section: str, rank: int):
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        access_control = get_access_control(chat_id)
-        access_control[section] = rank
-        cur.execute('''
-            INSERT INTO chats (chat_id, access_control)
-            VALUES (%s, %s::jsonb)
-            ON CONFLICT (chat_id)
-            DO UPDATE SET access_control = EXCLUDED.access_control
-        ''', (chat_id, json.dumps(access_control)))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
 
 def set_award(chat_id: int, user_id: int, award_name: str):
     try:
@@ -643,114 +603,6 @@ def remove_awards(chat_id: int, user_id: int):
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
-
-def add_member(chat_id: int, user_id: int, username: Optional[str], first_name: str):
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            INSERT INTO members (chat_id, user_id, username, first_name)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (chat_id, user_id)
-            DO UPDATE SET username = EXCLUDED.username, first_name = EXCLUDED.first_name
-        ''', (chat_id, user_id, username, first_name))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_all_members(chat_id: int) -> List[Dict[str, Any]]:
-    try:
-        conn = get_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT user_id, username, first_name FROM members WHERE chat_id = %s ORDER BY first_name', (chat_id,))
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [dict(row) for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
-
-def get_all_known_users(chat_id: int) -> List[tuple]:
-    """Get all unique user_ids from all tables (admins, nicks, warns, mutes, bans, awards)"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            SELECT DISTINCT user_id FROM (
-                SELECT user_id FROM users_ranks WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM nicks WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM warns WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM mutes WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM bans WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM awards WHERE chat_id = %s
-            ) all_users
-        ''', (chat_id, chat_id, chat_id, chat_id, chat_id, chat_id))
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [row[0] for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
-
-def save_chat_code(chat_id: int, chat_code: str):
-    """Сохранить код чата в БД для разделения по чатам"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            UPDATE chats SET chat_code = %s WHERE chat_id = %s
-        ''', (chat_code, chat_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        pass
-
-def get_chat_code(chat_id: int) -> Optional[str]:
-    """Получить код чата из БД"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT chat_code FROM chats WHERE chat_id = %s', (chat_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else None
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
-
-def get_chat_id_by_code(chat_code: str) -> Optional[int]:
-    """Получить chat_id по коду чата"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT chat_id FROM chats WHERE chat_code = %s', (chat_code,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else None
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
-
-def get_all_chats_with_codes() -> List[Dict[str, Any]]:
-    """Получить все чаты с их кодами для разделения"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT chat_id, chat_code FROM chats WHERE chat_code IS NOT NULL ORDER BY chat_code')
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [dict(row) for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
 
 def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
     try:
