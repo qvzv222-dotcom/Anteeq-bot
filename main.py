@@ -5,6 +5,7 @@ import string
 import re
 import threading
 import time
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -14,8 +15,8 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-import db
-from profanity_list import contains_profanity
+import test_db as db
+from test_profanity_list import contains_profanity
 
 app = Flask(__name__)
 
@@ -30,11 +31,14 @@ logging.basicConfig(
 
 logging.getLogger('httpx').setLevel(logging.WARNING)
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+BOT_TOKEN = os.environ.get('TEST_BOT_TOKEN')
 if not BOT_TOKEN:
-    print("Ошибка: BOT_TOKEN не найден!")
-    print("Добавьте BOT_TOKEN в переменные окружения")
+    print("🧪 ТЕСТОВЫЙ БОТ - Режим разработки")
+    print("Ошибка: TEST_BOT_TOKEN не найден!")
+    print("Добавьте TEST_BOT_TOKEN в переменные окружения")
     exit(1)
+else:
+    print("🧪 ТЕСТОВЫЙ БОТ - Режим разработки")
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
 
@@ -189,9 +193,11 @@ async def chat_code_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     code = generate_chat_code()
+    db.save_chat_code(chat_id, code)
 
     text = f"""📋 Код чата: <code>{code}</code>
 
+✅ Код сохранён в БД для разделения по чатам!
 Используйте этот код для импорта настроек чата.
 Чтобы импортировать: <code>!импорт {code}</code>"""
     await update.message.reply_text(text, parse_mode='HTML')
@@ -1116,21 +1122,187 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(commands_text, parse_mode='HTML')
 
 async def commands_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_command(update, context)
+    commands_text = """📚 ВСЕ КОМАНДЫ БОТА:
+
+<b>👤 НИКИ:</b>
+
+<code>+ник [ник]</code> - установить свой ник
+
+<code>-ник</code> - удалить свой ник
+
+<code>ник</code> - показать свой ник
+
+<code>ник [@user]</code> - показать ник пользователя
+
+<code>ники</code> - список всех ников
+
+<code>+ник другому [ник]</code> - установить ник другому (ответом)
+
+<code>-ник другому</code> - удалить ник другому (ответом)
+
+<b>⚠️ НАКАЗАНИЯ:</b>
+
+<code>варн [причина]</code> - выдать предупреждение (ответом)
+
+<code>преды</code> - показать свои предупреждения
+
+<code>преды [кол-во]</code> - показать предупреждения пользователя (ответом)
+
+<code>снять пред</code> - снять последнее предупреждение (ответом)
+
+<code>снять варн</code> - снять варн (ответом)
+
+<code>снять все варны</code> - снять все варны (ответом)
+
+<code>мут [время] [с/м]</code> - замутить пользователя (ответом)
+
+<code>размут</code> - размутить пользователя (ответом)
+
+<code>говори</code> - размутить (альтернатива)
+
+<code>бан [причина]</code> - забанить пользователя (ответом)
+
+<code>разбан</code> - разбанить пользователя (ответом)
+
+<code>кик</code> - кикнуть пользователя (ответом)
+
+<b>👑 АДМИНИСТРИРОВАНИЕ:</b>
+
+<code>назначить [ранг]</code> - назначить ранг (ответом, 0-5)
+
+<code>админы</code> - список администраторов
+
+<code>кто создатель</code> - показать создателя чата
+
+<code>сбор</code> - упомянуть всех участников
+
+<code>дк</code> - управление доступом к командам
+
+<code>дк [раздел] [ранг]</code> - изменить ранг доступа
+
+<b>📋 ЧАТЫ И ПРАВИЛА:</b>
+
+<code>приветствие</code> - показать приветственное сообщение
+
+<code>+приветствие [текст]</code> - установить приветствие
+
+<code>правила</code> - показать правила чата
+
+<code>+правила [текст]</code> - установить правила
+
+<code>!код чата</code> - сгенерировать код резервной копии
+
+<b>🎁 НАГРАДЫ:</b>
+
+<code>!наградить @user [название]</code> - выдать награду (ответом)
+
+<code>!снять награды</code> - снять все награды (ответом)
+
+<code>Наградной список</code> - показать всех с наградами
+
+<b>📊 ИСТОРИЯ:</b>
+
+<code>наказания</code> - показать свою историю наказаний
+
+<code>история наказаний</code> - показать всю историю чата
+
+<code>очистить историю наказаний</code> - очистить историю (создатель)
+
+<b>🔒 МОДЕРАЦИЯ:</b>
+
+<code>+маты</code> - включить фильтр мата
+
+<code>-маты</code> - отключить фильтр мата
+
+<code>!преды [число]</code> - установить макс варнов перед баном
+
+<b>ℹ️ ИНФОРМАЦИЯ:</b>
+
+<code>помощь</code> - краткая справка
+
+<code>команды</code> - полный список команд
+
+<code>кто ты</code> - информация о боте
+
+<code>кто я</code> - ваша информация"""
+
+    await update.message.reply_text(commands_text, parse_mode='HTML')
 
 async def who_is_this(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
         await update.message.reply_text("Ответьте на сообщение пользователя")
         return
     
+    chat_id = update.message.chat_id
     target_user = update.message.reply_to_message.from_user
-    user_link = f"<a href='tg://user?id={target_user.id}'>{target_user.first_name}</a>"
-    await update.message.reply_text(f"Это {user_link}", parse_mode='HTML')
+    target_user_id = target_user.id
+    
+    last_name = f" {target_user.last_name}" if target_user.last_name else ""
+    full_name = f"{target_user.first_name}{last_name}"
+    user_link = f"<a href='tg://user?id={target_user_id}'>{full_name}</a>"
+    
+    rank = db.get_user_rank(chat_id, target_user_id)
+    nick = db.get_nick(chat_id, target_user_id) or "Ник не установлен"
+    awards = db.get_user_awards(chat_id, target_user_id) or []
+    warns_count = len(db.get_warns(chat_id, target_user_id)) or 0
+    mute_time = db.get_mute_time(chat_id, target_user_id)
+    
+    profile_text = f"""👤 ПРОФИЛЬ: {user_link} [{rank}]
+📝 Ник: {nick}
+🎖️ Награды: {', '.join(awards) if awards else 'Нет'}
+⚠️ Наказания: """
+    
+    punishments = []
+    if mute_time:
+        punishments.append("мут")
+    if warns_count > 0:
+        if warns_count == 1:
+            punishments.append("пред")
+        else:
+            punishments.append(f"пред [{warns_count}]")
+    
+    if punishments:
+        profile_text += ", ".join(punishments)
+    else:
+        profile_text += "Наказаний нет."
+    
+    await update.message.reply_text(profile_text, parse_mode='HTML')
 
 async def who_am_i(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
     user = update.message.from_user
-    user_link = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
-    await update.message.reply_text(f"Это ты: {user_link}", parse_mode='HTML')
+    user_id = user.id
+    
+    last_name = f" {user.last_name}" if user.last_name else ""
+    full_name = f"{user.first_name}{last_name}"
+    user_link = f"<a href='tg://user?id={user_id}'>{full_name}</a>"
+    
+    rank = db.get_user_rank(chat_id, user_id)
+    nick = db.get_nick(chat_id, user_id) or "Ник не установлен"
+    awards = db.get_user_awards(chat_id, user_id) or []
+    warns_count = len(db.get_warns(chat_id, user_id)) or 0
+    mute_time = db.get_mute_time(chat_id, user_id)
+    
+    profile_text = f"""👤 ВАШ ПРОФИЛЬ: {user_link} [{rank}]
+📝 Ник: {nick}
+🎖️ Награды: {', '.join(awards) if awards else 'Нет'}
+⚠️ Наказания: """
+    
+    punishments = []
+    if mute_time:
+        punishments.append("мут")
+    if warns_count > 0:
+        if warns_count == 1:
+            punishments.append("пред")
+        else:
+            punishments.append(f"пред [{warns_count}]")
+    
+    if punishments:
+        profile_text += ", ".join(punishments)
+    else:
+        profile_text += "Наказаний нет."
+    
+    await update.message.reply_text(profile_text, parse_mode='HTML')
 
 async def bot_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Шо")
@@ -1157,6 +1329,8 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for user in update.message.new_chat_members:
         if user.is_bot:
             continue
+
+        db.add_member(chat_id, user.id, user.username, user.first_name)
 
         if is_creator_username(user.username):
             db.set_user_rank(chat_id, user.id, 5)
@@ -1490,6 +1664,189 @@ async def user_punishments_command(update: Update, context: ContextTypes.DEFAULT
     
     await update.message.reply_text(log_text, parse_mode='HTML')
 
+async def track_message_sender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Автоматически добавлять отправителя сообщения в БД members"""
+    if not update.message or update.message.chat.type == 'private':
+        return
+    
+    try:
+        db.add_member(
+            update.message.chat_id,
+            update.message.from_user.id,
+            update.message.from_user.username,
+            update.message.from_user.first_name
+        )
+    except:
+        pass
+
+async def track_edited_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отслеживать отредактированные сообщения"""
+    if not update.edited_message or update.edited_message.chat.type == 'private':
+        return
+    
+    try:
+        db.add_member(
+            update.edited_message.chat_id,
+            update.edited_message.from_user.id,
+            update.edited_message.from_user.username,
+            update.edited_message.from_user.first_name
+        )
+    except:
+        pass
+
+async def track_reactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отслеживать реакции на сообщения"""
+    if not update.message_reaction or update.message_reaction.chat.type == 'private':
+        return
+    
+    try:
+        db.add_member(
+            update.message_reaction.chat.id,
+            update.message_reaction.user.id,
+            update.message_reaction.user.username,
+            update.message_reaction.user.first_name
+        )
+    except:
+        pass
+
+async def collect_members_by_reaction(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Собрать участников через реакции на сообщение"""
+    if not update.message:
+        return
+    
+    if update.message.chat.type == 'private':
+        await update.message.reply_text("❌ Команда работает только в группах")
+        return
+    
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    # Проверка прав администратора (ранг 3+)
+    user_rank = db.get_user_rank(chat_id, user_id)
+    if user_rank < 3:
+        await update.message.reply_text("❌ Только администраторы (ранг 3+) могут использовать эту команду")
+        return
+    
+    try:
+        # Отправляем сообщение для сбора реакций
+        poll_message = await update.message.reply_text(
+            "👍 Реагируйте 👍\n"
+            "даёт + к удаче в мистиках\n\n"
+            "⏱️ (30 сек для сбора...)",
+            parse_mode='HTML'
+        )
+        
+        # Даем 30 секунд на сбор реакций
+        await asyncio.sleep(30)
+        
+        # Получаем информацию о сообщении с реакциями
+        try:
+            msg_info = await context.bot.get_message(chat_id, poll_message.message_id)
+            
+            collected_count = 0
+            # Ищем реакцию 👍 среди всех реакций
+            if msg_info.reactions:
+                for reaction in msg_info.reactions:
+                    if reaction.emoji == '👍' or reaction.type == 'emoji' and '👍' in str(reaction):
+                        # Получить список пользователей которые реагировали
+                        try:
+                            reactors = await context.bot.get_message_reactors(
+                                chat_id, poll_message.message_id, reaction
+                            )
+                            for reactor in reactors:
+                                db.add_member(
+                                    chat_id,
+                                    reactor.user.id,
+                                    reactor.user.username,
+                                    reactor.user.first_name
+                                )
+                                collected_count += 1
+                        except:
+                            pass
+            
+            total_members = len(db.get_all_members(chat_id))
+            await context.bot.edit_message_text(
+                f"✅ <b>Сбор завершен!</b>\n"
+                f"📊 Всего в БД: {total_members} участников\n"
+                f"👍 В этот раз среагировали: {collected_count}",
+                chat_id=chat_id,
+                message_id=poll_message.message_id,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            await context.bot.edit_message_text(
+                f"⚠️ Не удалось подсчитать реакции: {str(e)[:50]}",
+                chat_id=chat_id,
+                message_id=poll_message.message_id
+            )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка: {str(e)[:100]}")
+
+async def load_existing_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Загрузить всех существующих участников в таблицу members"""
+    if not update.message:
+        return
+    
+    if update.message.chat.type == 'private':
+        await update.message.reply_text("❌ Команда работает только в группах")
+        return
+    
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    # Проверка прав администратора (ранг 3+)
+    user_rank = db.get_user_rank(chat_id, user_id)
+    if user_rank < 3:
+        await update.message.reply_text("❌ Только администраторы (ранг 3+) могут использовать эту команду")
+        return
+    
+    try:
+        # Получить всех администраторов из Telegram API
+        admins = await context.bot.get_chat_administrators(chat_id)
+        loaded_count = 0
+        admin_ids = []
+        
+        for admin in admins:
+            if not admin.user.is_bot:
+                db.add_member(
+                    chat_id,
+                    admin.user.id,
+                    admin.user.username,
+                    admin.user.first_name
+                )
+                admin_ids.append(admin.user.id)
+                loaded_count += 1
+        
+        # Получить всех известных пользователей из БД (из таблиц рангов, наказаний и т.д.)
+        known_users = db.get_all_known_users(chat_id)
+        
+        for u_id in known_users:
+            if u_id not in admin_ids:
+                # Попытаться получить информацию о пользователе через API
+                try:
+                    user_member = await context.bot.get_chat_member(chat_id, u_id)
+                    if not user_member.user.is_bot:
+                        db.add_member(
+                            chat_id,
+                            user_member.user.id,
+                            user_member.user.username,
+                            user_member.user.first_name
+                        )
+                        loaded_count += 1
+                except:
+                    pass
+        
+        total_members = len(db.get_all_members(chat_id))
+        await update.message.reply_text(
+            f"✅ <b>Участники загружены!</b>\n"
+            f"📊 Всего в БД: {total_members} участников\n"
+            f"🔄 В этой сессии загружено: {loaded_count}\n\n"
+            f"💡 <i>Остальные участники автоматически добавляются при отправке сообщений</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка при загрузке: {str(e)[:100]}")
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
@@ -1541,12 +1898,19 @@ def setup_handlers(application):
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^история наказаний$'), moderation_log_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^очистить историю наказаний$'), clear_punishment_history_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^наказания$'), user_punishments_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!загрузить участников$'), load_existing_members))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^\+маты$'), enable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^-маты$'), disable_profanity_filter))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!преды'), set_max_warns_command))
 
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+    
+    # Track message senders automatically
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, track_message_sender), group=0)
+    
+    # Collect members by reactions
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'(?i)^!сбор_бд$'), collect_members_by_reaction))
     
     # Check profanity first
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_profanity), group=1)
@@ -1569,11 +1933,11 @@ def main():
     
     # Start Flask health check server in background thread
     def run_flask():
-        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+        app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
     
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    print("🌐 Flask health check server started on port 5000")
+    print("🌐 Flask health check server started on port 8080 (TEST BOT)")
     
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
