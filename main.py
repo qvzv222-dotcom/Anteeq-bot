@@ -1814,6 +1814,36 @@ async def user_punishments_command(update: Update, context: ContextTypes.DEFAULT
     
     await update.message.reply_text(log_text, parse_mode='HTML')
 
+async def list_all_members_ids(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    
+    try:
+        all_user_ids = db.get_all_unique_users_global()
+        members_list = []
+        
+        for user_id in sorted(all_user_ids):
+            try:
+                member = await context.bot.get_chat_member(chat_id, user_id)
+                first_name = member.user.first_name or "N/A"
+                username = f"@{member.user.username}" if member.user.username else "—"
+                members_list.append(f"<code>{user_id}</code> | {first_name} | {username}")
+            except:
+                pass
+        
+        if not members_list:
+            await update.message.reply_text("❌ Не удалось получить список участников")
+            return
+        
+        members_text = f"📊 <b>ID ВСЕХ УЧАСТНИКОВ ИЗ ВСЕХ ЧАТОВ ({len(members_list)}):</b>\n\n"
+        members_text += "\n".join(members_list[:50])
+        
+        if len(members_list) > 50:
+            members_text += f"\n\n... и ещё {len(members_list) - 50}"
+        
+        await update.message.reply_text(members_text, parse_mode='HTML')
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+
 def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^(help_command|nicks_help|warns_help|rules_help)"))
