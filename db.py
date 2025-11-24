@@ -130,6 +130,15 @@ def init_database():
         )
     ''')
     
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS unknown_commands (
+            chat_id BIGINT,
+            command VARCHAR(255),
+            last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (chat_id, command)
+        )
+    ''')
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -995,3 +1004,56 @@ def clear_punishment_history(chat_id: int):
         conn.close()
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         pass
+
+def init_unknown_commands_table():
+    """Инициализирует таблицу для отслеживания неизвестных команд"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS unknown_commands (
+                chat_id BIGINT,
+                command VARCHAR(255),
+                last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (chat_id, command)
+            )
+        ''')
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def log_unknown_command(chat_id: int, command: str):
+    """Логирует неизвестную команду с текущим временем"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO unknown_commands (chat_id, command, last_used)
+            VALUES (%s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (chat_id, command)
+            DO UPDATE SET last_used = CURRENT_TIMESTAMP
+        ''', (chat_id, command[:50]))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        pass
+
+def should_respond_to_unknown_command(chat_id: int, command: str, minutes: int = 30) -> bool:
+    """Проверяет, была ли команда использована в последние N минут"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT last_used FROM unknown_commands 
+            WHERE chat_id = %s AND command = %s
+            AND last_used > NOW() - INTERVAL '%s minutes'
+        ''', (chat_id, command[:50], minutes))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return bool(result)
+    except (psycopg2.OperationalError, psycopg2.DatabaseError):
+        return True

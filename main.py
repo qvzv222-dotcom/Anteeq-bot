@@ -1553,6 +1553,21 @@ def setup_handlers(application):
     
     # Check links last (after all command handlers) to avoid blocking commands
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_links), group=100)
+    
+    # Handle unknown commands with 30-minute time limit
+    async def handle_unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not update.message or not update.message.text:
+            return
+        chat_id = update.message.chat_id
+        text = update.message.text.strip()
+        
+        if db.should_respond_to_unknown_command(chat_id, text, minutes=30):
+            db.log_unknown_command(chat_id, text)
+            await update.message.reply_text("❓ Неизвестная команда")
+        else:
+            db.log_unknown_command(chat_id, text)
+    
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_command), group=200)
 
 def main():
     print("Инициализация базы данных...")
