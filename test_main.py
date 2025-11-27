@@ -67,12 +67,12 @@ async def get_user_id_by_username(username: str, context: ContextTypes.DEFAULT_T
             if member_dict.get('username') and member_dict['username'].lower() == username.lower():
                 return member_dict['user_id']
         
-        # Fallback 1: Поиск ВО ВСЕХ чатах (глобальный поиск в members) - РАБОТАЕТ!
+        # Fallback 1: Поиск ВО ВСЕХ чатах (глобальный поиск в members)
         user_id = db.get_user_id_by_username_global(username)
         if user_id:
             return user_id
         
-        # Fallback 2: Проверить администраторов текущего чата через API
+        # Fallback 2: Проверить администраторов текущего чата
         try:
             administrators = await context.bot.get_chat_administrators(chat_id)
             for admin in administrators:
@@ -1087,15 +1087,9 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Поддержка @username из БД и Telegram API
         if user_id_input.startswith('@'):
             username = user_id_input.lstrip('@')
-            
-            # Сначала в текущем чате
             lookup_id = db.get_user_id_by_username_db(chat_id, username)
             
-            # Если не найдено в текущем чате, ищем ВО ВСЕХ чатах в БД (ГАРАНТИРОВАННО найдет!)
-            if not lookup_id:
-                lookup_id = db.get_user_id_by_username_global(username)
-            
-            # Если не найдено в БД, ищем через Telegram API администраторов
+            # Если не найдено в БД, ищем через Telegram API
             if not lookup_id:
                 lookup_id = await get_user_id_by_username(username, context, chat_id)
             
@@ -1104,7 +1098,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     member = await context.bot.get_chat_member(chat_id, lookup_id)
                     target_user = member.user
                 except:
-                    await update.message.reply_text(f"❌ Пользователь @{username} не найден в этом чате")
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
                     return
             else:
                 await update.message.reply_text(f"❌ Пользователь @{username} не найден")
