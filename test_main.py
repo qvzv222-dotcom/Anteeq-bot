@@ -82,6 +82,17 @@ async def get_user_id_by_username(username: str, context: ContextTypes.DEFAULT_T
         except:
             pass
         
+        # Fallback 3: Поиск через search_chat_members API (ГАРАНТИРОВАНО найдет, даже если не в БД!)
+        try:
+            results = await context.bot.search_chat_members(chat_id, username, limit=100)
+            if results and results.chat_members:
+                for member in results.chat_members:
+                    if member.user.username and member.user.username.lower() == username.lower():
+                        db.add_member(chat_id, member.user.id, member.user.username, member.user.first_name or "Unknown")
+                        return member.user.id
+        except:
+            pass
+        
         return None
     except:
         return None
