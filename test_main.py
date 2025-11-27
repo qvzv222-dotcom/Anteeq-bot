@@ -67,12 +67,7 @@ async def get_user_id_by_username(username: str, context: ContextTypes.DEFAULT_T
             if member_dict.get('username') and member_dict['username'].lower() == username.lower():
                 return member_dict['user_id']
         
-        # Fallback 1: Поиск ВО ВСЕХ чатах (глобальный поиск в members)
-        user_id = db.get_user_id_by_username_global(username)
-        if user_id:
-            return user_id
-        
-        # Fallback 2: Проверить администраторов текущего чата
+        # Fallback: Проверить администраторов текущего чата
         try:
             administrators = await context.bot.get_chat_administrators(chat_id)
             for admin in administrators:
