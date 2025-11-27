@@ -1087,9 +1087,15 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Поддержка @username из БД и Telegram API
         if user_id_input.startswith('@'):
             username = user_id_input.lstrip('@')
+            
+            # Сначала в текущем чате
             lookup_id = db.get_user_id_by_username_db(chat_id, username)
             
-            # Если не найдено в БД, ищем через Telegram API
+            # Если не найдено в текущем чате, ищем ВО ВСЕХ чатах в БД (ГАРАНТИРОВАННО найдет!)
+            if not lookup_id:
+                lookup_id = db.get_user_id_by_username_global(username)
+            
+            # Если не найдено в БД, ищем через Telegram API администраторов
             if not lookup_id:
                 lookup_id = await get_user_id_by_username(username, context, chat_id)
             
@@ -1098,7 +1104,7 @@ async def mute_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     member = await context.bot.get_chat_member(chat_id, lookup_id)
                     target_user = member.user
                 except:
-                    await update.message.reply_text(f"❌ Пользователь @{username} не найден")
+                    await update.message.reply_text(f"❌ Пользователь @{username} не найден в этом чате")
                     return
             else:
                 await update.message.reply_text(f"❌ Пользователь @{username} не найден")
