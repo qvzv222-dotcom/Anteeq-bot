@@ -866,20 +866,6 @@ def get_user_id_by_username_db(chat_id: int, username: str) -> Optional[int]:
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return None
 
-def get_user_id_by_username_global(username: str) -> Optional[int]:
-    """Search for user ID by username in ALL chats (global search)"""
-    try:
-        username = username.lstrip('@').lower()
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT user_id FROM members WHERE LOWER(username) = %s LIMIT 1', (username,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else None
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
-
 def get_all_awards(chat_id: int) -> Dict[int, str]:
     try:
         conn = get_connection()

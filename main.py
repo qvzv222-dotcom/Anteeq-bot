@@ -30,7 +30,7 @@ logging.basicConfig(
 
 logging.getLogger('httpx').setLevel(logging.WARNING)
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+BOT_TOKEN = os.environ.get('TEST_BOT_TOKEN')
 if not BOT_TOKEN:
     print("Ошибка: BOT_TOKEN не найден!")
     print("Добавьте BOT_TOKEN в переменные окружения")
