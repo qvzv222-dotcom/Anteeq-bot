@@ -37,7 +37,7 @@ if not BOT_TOKEN:
     exit(1)
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
-CREATOR_IDS = []  # Добавьте user_ids создателей если username не работает
+CREATOR_IDS = [1376105197]  # Добавьте user_ids создателей если username не работает
 
 def generate_chat_code() -> str:
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
