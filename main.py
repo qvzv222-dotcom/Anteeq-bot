@@ -14,7 +14,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
-import test_db as db
+import db
 from profanity_list import contains_profanity
 
 app = Flask(__name__)
