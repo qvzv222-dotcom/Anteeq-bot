@@ -1,50 +1,37 @@
 # Telegram Chat Administration Bot
 
 ## Overview
-A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
+A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
-- **2025-11-24**: Complete cleanup - production bot only ✅
-  - Removed ALL test bot files from Replit (test_main.py, test_db.py, test_profanity_list.py)
-  - Kept ONLY: main.py, db.py, profanity_list.py on Replit (copied from GitHub)
-  - Entire codebase stored on GitHub: qvzv222-dotcom/Anteeq-bot
-  - Production Bot workflow runs main.py with BOT_TOKEN
-  - **WORKFLOW:** Download from GitHub → Run on Replit → Render auto-deploys
+- **2025-11-28**: Migration to Replit-only deployment ✅
+  - Removed ALL production files (main.py, db.py, profanity_list.py, render.yaml, Dockerfile)
+  - Kept ONLY: test_main.py, test_db.py on Replit
+  - Database: PostgreSQL on Replit (via create_postgresql_database_tool)
+  - **WORKFLOW:** Bot runs directly on Replit with TEST_BOT_TOKEN
 
 ## Project Architecture
 
-### CLEAN STRUCTURE: Everything on GitHub
+### REPLIT-ONLY STRUCTURE
 
-**Files on GitHub (Source of Truth):**
-- `main.py` - Production bot code
-- `db.py` - Database operations
+**Files on Replit:**
+- `test_main.py` - Bot code (uses TEST_BOT_TOKEN)
+- `test_db.py` - Database operations
 - `profanity_list.py` - Profanity filter
-- `Dockerfile` - Docker config
-- `render.yaml` - Render deployment
-- `requirements.txt` - Dependencies
-- `.gitignore` - Git ignore rules
+- `requirements.txt` - Python dependencies
 
-**Files on Replit (Local Copy):**
-- Same 3 Python files: `main.py`, `db.py`, `profanity_list.py`
-- Copied from GitHub to run locally
-- Production Bot workflow executes main.py
-
-**Deployment Flow:**
-1. **Edit code:** Modify on Replit (test locally first)
-2. **Push to GitHub:** `git add -A && git commit -m "..." && git push`
-3. **Render auto-deploys:** Docker builds and runs on render.com
-4. **Both running:** Replit (workflow) + Render (production) with same code
+**Database:**
+- PostgreSQL on Replit (via DATABASE_URL environment variable)
 
 **Single Workflow:**
-- `Production Bot` → Executes `python main.py` on Replit (port 5000)
+- `Test Bot` → Executes `python test_main.py` (port 5000)
 
 **Tech Stack:**
 - Language: Python 3.11
 - Bot Framework: python-telegram-bot (async/await with APScheduler)
-- Database: PostgreSQL (Replit Neon + Render)
+- Database: PostgreSQL (Replit built-in)
 - HTTP Server: Flask (port 5000 for health checks)
-- Deployment: Render.com Docker (24/7 production)
-- Version Control: GitHub (qvzv222-dotcom/Anteeq-bot)
+- Deployment: Replit only
 
 ### Key Features
 1. **Rank System**: 6 levels (0-5) from Participant to Alliance Head
@@ -84,8 +71,9 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ```
 
 ### Environment Variables Required
-- `BOT_TOKEN` - Production Telegram Bot API token (GitHub secret)
-- `DATABASE_URL` - PostgreSQL connection string (Render + Replit)
+- `TEST_BOT_TOKEN` - Telegram Bot API token (secret)
+- `DATABASE_URL` - PostgreSQL connection string (Replit auto-created)
+- `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGHOST` - PostgreSQL config (auto-created)
 
 ### Creator Usernames (Auto Rank 5)
 - mearlock
@@ -170,10 +158,10 @@ Access levels 0-5: Участник → Модератор → Наборщик 
 4. **Render auto-deploys** - production bot updates within minutes
 
 ### Current Status:
-- ✅ Replit: Clean (only 3 production files)
-- ✅ GitHub: Single source of truth (main.py, db.py, profanity_list.py)
-- ✅ Render: 24/7 production bot
-- ✅ All code from GitHub
+- ✅ Replit: Bot files (test_main.py, test_db.py, profanity_list.py)
+- ✅ Database: PostgreSQL on Replit
+- ✅ Workflow: Test Bot running 24/7 on Replit
+- ✅ Single deployment target: Replit only
 
 ## User Preferences
 - **Communication:** Russian language only (agent should speak Russian with user)
