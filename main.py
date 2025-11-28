@@ -37,6 +37,7 @@ if not BOT_TOKEN:
     exit(1)
 
 CREATORS = ['mearlock', 'Dean_Brown1', 'Dashyha262']
+CREATOR_IDS = []  # Добавьте user_ids создателей если username не работает
 
 def generate_chat_code() -> str:
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
@@ -44,7 +45,10 @@ def generate_chat_code() -> str:
 def is_creator_username(username: Optional[str]) -> bool:
     if not username:
         return False
-    return username in CREATORS
+    return username.lower() in [c.lower() for c in CREATORS]
+
+def is_creator_user_id(user_id: int) -> bool:
+    return user_id in CREATOR_IDS
 
 def get_user_rank(chat_id: int, user_id: int) -> int:
     return db.get_user_rank(chat_id, user_id)
@@ -1469,8 +1473,11 @@ async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             continue
 
         db.add_member(chat_id, user.id, user.username, user.first_name or "Unknown")
+        
+        print(f"👤 Пользователь присоединился: {user.first_name} (@{user.username}) ID: {user.id}")
 
-        if is_creator_username(user.username):
+        if is_creator_username(user.username) or is_creator_user_id(user.id):
+            print(f"✅ {user.first_name} - создатель!")
             db.set_user_rank(chat_id, user.id, 5)
 
         welcome_text = db.get_welcome_message(chat_id)
