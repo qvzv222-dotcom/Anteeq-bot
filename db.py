@@ -8,14 +8,14 @@ import time
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-def get_connection(retry_count=1):
+def get_connection(retry_count=3):
     for attempt in range(retry_count):
         try:
-            return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=2)
+            return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
         except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
             if attempt == retry_count - 1:
                 raise
-            time.sleep(0.5)
+            time.sleep(1 + attempt)
 
 def safe_execute(func):
     def wrapper(*args, **kwargs):
@@ -28,13 +28,7 @@ def safe_execute(func):
     return wrapper
 
 def init_database():
-    try:
-        conn = get_connection()
-    except Exception as e:
-        import logging
-        logging.warning(f"Database not available during initialization: {str(e)}. Bot will continue without persistent storage.")
-        return
-    
+    conn = get_connection()
     cur = conn.cursor()
     
     cur.execute('''
@@ -670,25 +664,10 @@ def add_member(chat_id: int, user_id: int, username: Optional[str], first_name: 
             DO UPDATE SET username = EXCLUDED.username, first_name = EXCLUDED.first_name
         ''', (chat_id, user_id, username, first_name))
         conn.commit()
-        print(f"✅ add_member: {chat_id}, {user_id}, {username}, {first_name}")
         cur.close()
         conn.close()
-    except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
-        print(f"❌ add_member ERROR: {str(e)}")
-
-def get_user_id_by_username_db(chat_id: int, username: str) -> Optional[int]:
-    """Поиск user_id по username в таблице members"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT user_id FROM members WHERE chat_id = %s AND username = %s LIMIT 1', 
-                    (chat_id, username))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else None
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
+        pass
 
 def get_all_members(chat_id: int) -> List[Dict[str, Any]]:
     try:
@@ -801,76 +780,6 @@ def get_all_users_in_chat(chat_id: int) -> List[Dict[str, Any]]:
         return [dict(row) for row in results]
     except (psycopg2.OperationalError, psycopg2.DatabaseError):
         return []
-
-def get_all_unique_users(chat_id: int) -> List[int]:
-    """Get all unique user IDs from all tables for a chat"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            SELECT DISTINCT user_id FROM (
-                SELECT user_id FROM admins WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM nicks WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM warns WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM mutes WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM bans WHERE chat_id = %s
-                UNION
-                SELECT user_id FROM awards WHERE chat_id = %s
-            ) users
-            ORDER BY user_id
-        ''', (chat_id, chat_id, chat_id, chat_id, chat_id, chat_id))
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [row[0] for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
-
-def get_all_unique_users_global() -> List[int]:
-    """Get all unique user IDs from all tables across ALL chats (global)"""
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('''
-            SELECT DISTINCT user_id FROM (
-                SELECT user_id FROM admins
-                UNION
-                SELECT user_id FROM nicks
-                UNION
-                SELECT user_id FROM warns
-                UNION
-                SELECT user_id FROM mutes
-                UNION
-                SELECT user_id FROM bans
-                UNION
-                SELECT user_id FROM awards
-            ) users
-            ORDER BY user_id
-        ''')
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [row[0] for row in results]
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return []
-
-def get_user_id_by_username_db(chat_id: int, username: str) -> Optional[int]:
-    """Search for user ID by username in the chat"""
-    try:
-        username = username.lstrip('@')
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT user_id FROM members WHERE chat_id = %s AND username = %s', (chat_id, username))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        return result[0] if result else None
-    except (psycopg2.OperationalError, psycopg2.DatabaseError):
-        return None
 
 def get_all_awards(chat_id: int) -> Dict[int, str]:
     try:

@@ -4,13 +4,12 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running 24/7 on Render.com with pure polling architecture and Docker containerization.
 
 ## Recent Changes
-- **2025-11-24**: Final Architecture Fix - Separate Bots ✅
-  - Removed "Production Bot" workflow from Replit (was running main.py)
-  - **ONLY Test Bot** (test_main.py with TEST_BOT_TOKEN) runs on Replit
-  - **ONLY Production Bot** (main.py with BOT_TOKEN) runs on Render.com Docker 24/7
-  - main.py, db.py stored on Replit as local copies for editing only
-  - Clean separation: Replit for development, Render for production
-  - **WORKFLOW:** Develop on Replit → Test with Test Bot → Push to GitHub → Render auto-deploys
+- **2025-11-24**: Complete cleanup - production bot only ✅
+  - Removed ALL test bot files from Replit (test_main.py, test_db.py, test_profanity_list.py)
+  - Kept ONLY: main.py, db.py, profanity_list.py on Replit (copied from GitHub)
+  - Entire codebase stored on GitHub: qvzv222-dotcom/Anteeq-bot
+  - Production Bot workflow runs main.py with BOT_TOKEN
+  - **WORKFLOW:** Download from GitHub → Run on Replit → Render auto-deploys
 
 ## Project Architecture
 
@@ -36,8 +35,8 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 3. **Render auto-deploys:** Docker builds and runs on render.com
 4. **Both running:** Replit (workflow) + Render (production) with same code
 
-**Single Workflow (Local):**
-- `Test Bot` → Executes `python test_main.py` on Replit (for testing only)
+**Single Workflow:**
+- `Production Bot` → Executes `python main.py` on Replit (port 5000)
 
 **Tech Stack:**
 - Language: Python 3.11
