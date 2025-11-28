@@ -28,7 +28,13 @@ def safe_execute(func):
     return wrapper
 
 def init_database():
-    conn = get_connection()
+    try:
+        conn = get_connection()
+    except Exception as e:
+        import logging
+        logging.warning(f"Database not available during initialization: {str(e)}. Bot will continue without persistent storage.")
+        return
+    
     cur = conn.cursor()
     
     cur.execute('''

@@ -1953,7 +1953,11 @@ def setup_handlers(application):
 
 def main():
     print("Инициализация базы данных...")
-    db.init_database()
+    try:
+        db.init_database()
+    except Exception as e:
+        print(f"⚠️ Ошибка БД: {str(e)}")
+        print("⚠️ Бот продолжит работу, но без сохранения данных")
     
     print("Инициализация бота...")
     application = Application.builder().token(BOT_TOKEN).build()
