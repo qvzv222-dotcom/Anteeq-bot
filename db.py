@@ -8,14 +8,14 @@ import time
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-def get_connection(retry_count=3):
+def get_connection(retry_count=1):
     for attempt in range(retry_count):
         try:
-            return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+            return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=2)
         except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
             if attempt == retry_count - 1:
                 raise
-            time.sleep(1 + attempt)
+            time.sleep(0.5)
 
 def safe_execute(func):
     def wrapper(*args, **kwargs):
