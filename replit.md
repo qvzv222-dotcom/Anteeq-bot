@@ -4,11 +4,13 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
-- **2025-11-28**: Migration to Replit-only deployment ✅
-  - Removed ALL production files (main.py, db.py, profanity_list.py, render.yaml, Dockerfile)
-  - Kept ONLY: test_main.py, test_db.py on Replit
-  - Database: PostgreSQL on Replit (via create_postgresql_database_tool)
-  - **WORKFLOW:** Bot runs directly on Replit with TEST_BOT_TOKEN
+- **2025-11-28**: FINAL FIX - SQLite Database ✅
+  - Migrated from PostgreSQL to **SQLite** (no more network/freezing issues!)
+  - Database file: `~/.telegram_bot.db` (stored locally on Replit)
+  - All data persists automatically
+  - Bot fully operational and tested
+  - **WORKFLOW:** `Test Bot` → Executes `python test_main.py` (polls Telegram API)
+  - Health check Flask server on port 5000
 
 ## Project Architecture
 
@@ -21,7 +23,9 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `requirements.txt` - Python dependencies
 
 **Database:**
-- PostgreSQL on Replit (via DATABASE_URL environment variable)
+- SQLite locally stored (`~/.telegram_bot.db`)
+- Zero network dependencies - 100% reliable
+- Auto-initialized on first bot start
 
 **Single Workflow:**
 - `Test Bot` → Executes `python test_main.py` (port 5000)
@@ -71,9 +75,7 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ```
 
 ### Environment Variables Required
-- `TEST_BOT_TOKEN` - Telegram Bot API token (secret)
-- `DATABASE_URL` - PostgreSQL connection string (Replit auto-created)
-- `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGHOST` - PostgreSQL config (auto-created)
+- `TEST_BOT_TOKEN` - Telegram Bot API token (secret) ✅
 
 ### Creator Usernames (Auto Rank 5)
 - mearlock
