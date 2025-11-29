@@ -4,14 +4,14 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
-- **2025-11-29**: Global Members Database & Auto Creator Setup ✅
+- **2025-11-29**: Auto-Unmute System & Global Members Database ✅
+  - **Auto-unmute**: Periodic job checks every 5 seconds for expired mutes and auto-unmutes users
   - Converted `members` table to GLOBAL (PRIMARY KEY: user_id only, no chat_id)
   - Command `айди` shows ALL members from all chats globally
-  - Auto-sync on: messages, callback queries, message reactions
-  - Fixed creator auto-rank: owner gets rank 5 automatically on bot join via `set_chat_owner_as_creator()`
+  - Auto-sync members on: messages, callback queries, message reactions
+  - Fixed creator auto-rank: owner gets rank 5 automatically on bot join
   - `ensure_chat_exists()` safely creates chats without regenerating codes
   - `set_chat_owner_as_creator()` guarantees rank 5 setup regardless of chat state
-  - Removed duplicate members by resetting DB with new global schema
 
 - **2025-11-29**: Username-Based Punishment System ✅
   - Punishment commands support username syntax: `мут username 5 м`, `размут username`, `бан username`
