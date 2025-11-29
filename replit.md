@@ -11,7 +11,11 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
     - `мут username число единица_времени` - Mute by username (e.g., `мут joker 5 м`)
     - `размут username` - Unmute by username
     - `бан username [причина]` - Ban by username
-  - Members table auto-synced when users join chat (stores username, names, user_id)
+  - **Auto-sync members on:**
+    - User joins chat (new_chat_members)
+    - Any message sent (including replies)
+    - Button clicks (callback queries)
+    - Automatic username, first_name, last_name sync
   - Support all time units: с/сек/секунд(а), м/мин/минут(а), ч/час(а/ов), д/дн(я/ей), г/год(лет), век(а/ов)
   - Backwards compatible: all commands still work via reply-to-message
 
