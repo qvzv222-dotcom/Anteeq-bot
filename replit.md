@@ -4,25 +4,23 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
+- **2025-11-29**: Global Members Database & Auto Creator Setup ✅
+  - Converted `members` table to GLOBAL (PRIMARY KEY: user_id only, no chat_id)
+  - Command `айди` shows ALL members from all chats globally
+  - Auto-sync on: messages, callback queries, message reactions
+  - Fixed creator auto-rank: owner gets rank 5 automatically on bot join
+  - `ensure_chat_exists()` now sets creator rank on chat creation
+  - Removed all username display from `айди` - shows only ID + clickable name + last name
+  - Removed duplicate members by resetting DB with new global schema
+
 - **2025-11-29**: Username-Based Punishment System ✅
-  - Added `members` table with: user_id, user_name (username), first_name, last_name, chat_id
-  - Created `get_user_id_by_username()` function for username lookup
-  - Rewrote punishment commands to support username syntax:
-    - `мут username число единица_времени` - Mute by username (e.g., `мут joker 5 м`)
-    - `размут username` - Unmute by username
-    - `бан username [причина]` - Ban by username
-  - **Auto-sync members on:**
-    - User joins chat (new_chat_members)
-    - Any message sent (including replies)
-    - Button clicks (callback queries)
-    - Automatic username, first_name, last_name sync
+  - Punishment commands support username syntax: `мут username 5 м`, `размут username`, `бан username`
+  - All commands backwards compatible via reply-to-message
   - Support all time units: с/сек/секунд(а), м/мин/минут(а), ч/час(а/ов), д/дн(я/ей), г/год(лет), век(а/ов)
-  - Backwards compatible: all commands still work via reply-to-message
 
 - **2025-11-29**: Chat Code System with Settings Import ✅
   - Created "!код чата" command - generates code once per chat
   - Added code-based settings import/export (excludes punishments & ranks)
-  - Implemented functions: get_chat_code, get_chat_id_by_code, export_chat_settings, import_chat_settings
   - Users can share configs between groups via chat codes
   
 - **2025-11-28**: FINAL FIX - SQLite Database ✅
