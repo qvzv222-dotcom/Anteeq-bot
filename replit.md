@@ -8,9 +8,9 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
   - Converted `members` table to GLOBAL (PRIMARY KEY: user_id only, no chat_id)
   - Command `айди` shows ALL members from all chats globally
   - Auto-sync on: messages, callback queries, message reactions
-  - Fixed creator auto-rank: owner gets rank 5 automatically on bot join
-  - `ensure_chat_exists()` now sets creator rank on chat creation
-  - Removed all username display from `айди` - shows only ID + clickable name + last name
+  - Fixed creator auto-rank: owner gets rank 5 automatically on bot join via `set_chat_owner_as_creator()`
+  - `ensure_chat_exists()` safely creates chats without regenerating codes
+  - `set_chat_owner_as_creator()` guarantees rank 5 setup regardless of chat state
   - Removed duplicate members by resetting DB with new global schema
 
 - **2025-11-29**: Username-Based Punishment System ✅
