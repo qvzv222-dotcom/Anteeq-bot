@@ -112,6 +112,9 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `помощь` or `команды` - Show help with inline buttons
 - `кто ты` - Bot response: "Шо"
 - `кто я` - Show your profile info
+- **`айди`** - Show your info from members table
+- **`айди username`** - Show user info from members table
+- **`айди`** (reply) - Show replied user info from members table
 
 ### 👤 Nickname Management (Ранг 2.1)
 - `+ник [nickname]` - Set your nickname
