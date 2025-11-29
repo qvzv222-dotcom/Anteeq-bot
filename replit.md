@@ -4,11 +4,11 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
-- **2025-11-29**: Removed Chat Code System ✅
-  - Deleted "!код чата" command and all related functions
-  - Removed `chat_code` column from database schema
-  - Cleaned up chat_code_command, generate_chat_code, get_chat_code, get_chat_id_by_code functions
-  - Simplified chat creation process
+- **2025-11-29**: Chat Code System with Settings Import ✅
+  - Created "!код чата" command - generates code once per chat
+  - Added code-based settings import/export (excludes punishments & ranks)
+  - Implemented functions: get_chat_code, get_chat_id_by_code, export_chat_settings, import_chat_settings
+  - Users can share configs between groups via chat codes
   
 - **2025-11-28**: FINAL FIX - SQLite Database ✅
   - Migrated from PostgreSQL to **SQLite** (no more network/freezing issues!)
@@ -125,6 +125,8 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `+правила [text]` - Set chat rules (admin only)
 - `приветствие` - Show welcome message
 - `+приветствие [text]` - Set welcome message (admin only)
+- `!код чата` - Show chat code for exporting settings
+- `!импорт [код]` - Import settings from another chat via code
 
 ### 👑 Administration (Ранг 3 and above)
 - `администраторы` or `админы` - List all admins with ranks
