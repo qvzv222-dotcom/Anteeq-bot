@@ -4,19 +4,14 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
-- **2025-11-29**: Auto-Unmute System & Global Members Database ✅
+- **2025-11-29**: Username-Based Punishment System (Complete) ✅
+  - **Punishment commands by username**: `варн @username`, `преды @username`, `мут @username`, `размут @username`, `бан @username`
   - **Auto-unmute**: Periodic job checks every 5 seconds for expired mutes and auto-unmutes users
   - Converted `members` table to GLOBAL (PRIMARY KEY: user_id only, no chat_id)
   - Command `айди` shows ALL members from all chats globally
   - Auto-sync members on: messages, callback queries, message reactions
   - Fixed creator auto-rank: owner gets rank 5 automatically on bot join
-  - `ensure_chat_exists()` safely creates chats without regenerating codes
-  - `set_chat_owner_as_creator()` guarantees rank 5 setup regardless of chat state
-
-- **2025-11-29**: Username-Based Punishment System ✅
-  - Punishment commands support username syntax: `мут username 5 м`, `размут username`, `бан username`
-  - All commands backwards compatible via reply-to-message
-  - Support all time units: с/сек/секунд(а), м/мин/минут(а), ч/час(а/ов), д/дн(я/ей), г/год(лет), век(а/ов)
+  - All commands backward compatible via reply-to-message
 
 - **2025-11-29**: Chat Code System with Settings Import ✅
   - Created "!код чата" command - generates code once per chat
@@ -122,18 +117,19 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `-ник другому` - Remove nickname from another user (reply required)
 
 ### ⚠️ Warning System (Ранг 1.1 - варн, 1.2 - мут/размут, 1.3 - бан/кик)
-- `преды` - Show your warnings
-- `преды [кол-во]` - Show warnings for replied user
+- **`преды @username`** - Show warnings for @username
+- `преды` - Show your warnings (or reply required to show for others)
+- **`варн @username [reason]`** - Warn by username (e.g., `варн @joker спам`)
 - `варн [reason]` - Warn user (reply required, auto-ban at 3 warnings)
 - `снять варн` - Remove last warning from user (reply required)
 - `снять пред` - Alias for removing warning
 - `снять все варны` - Remove all warnings from user (reply required)
-- **`мут username число единица_времени`** - Mute by username (e.g., `мут joker 5 м`)
+- **`мут @username число единица_времени`** - Mute by username (e.g., `мут @joker 5 м`)
 - **`мут [число] [единица_времени]`** - Mute by reply (e.g., reply + `мут 5 м`)
-- **`размут username`** - Unmute by username
+- **`размут @username`** - Unmute by username
 - **`размут`** - Unmute by reply
 - `говори` - Alias for unmuting
-- **`бан username [причина]`** - Ban by username
+- **`бан @username [причина]`** - Ban by username (e.g., `бан @joker спам`)
 - **`бан [причина]`** - Ban by reply
 - `разбан` - Unban user (reply required)
 - `кик` - Kick user from chat (reply required)
