@@ -4,11 +4,11 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
-- **2025-11-29**: Security Update - Hidden Creator Setup ✅
-  - Removed public creator username list (CREATORS array)
-  - Added hidden command `/start setcreator admin123` to set creator via password
-  - Creators can now be managed securely without exposing usernames
-  - All 73+ database functions fully implemented
+- **2025-11-29**: Removed Chat Code System ✅
+  - Deleted "!код чата" command and all related functions
+  - Removed `chat_code` column from database schema
+  - Cleaned up chat_code_command, generate_chat_code, get_chat_code, get_chat_id_by_code functions
+  - Simplified chat creation process
   
 - **2025-11-28**: FINAL FIX - SQLite Database ✅
   - Migrated from PostgreSQL to **SQLite** (no more network/freezing issues!)
@@ -49,7 +49,7 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 3. **Warning System**: Track warnings with automatic ban at 3 warnings, 7-day expiration
 4. **Mute/Ban System**: Permanent mutes (last indefinitely until `размут` command) and permanent bans
 5. **Access Control**: Customizable command permissions by rank
-6. **Chat Settings**: Welcome messages, rules, settings import/export via chat codes
+6. **Chat Settings**: Welcome messages, rules configuration
 7. **Creator System**: Special rank 5 privileges with "will" command inheritance
 8. **Reward System**: Award and manage user awards/achievements
 9. **Profanity Filter**: Auto-warn on profanity, configurable max warnings
@@ -120,12 +120,11 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `разбан` - Unban user (reply required)
 - `кик` - Kick user from chat (reply required)
 
-### 📋 Chat Settings (Ранг 3.2 - приветствие, 3.3 - правила, 3.4 - роли)
+### 📋 Chat Settings (Ранг 3.2 - приветствие, 3.3 - правила)
 - `правила` - Show chat rules
 - `+правила [text]` - Set chat rules (admin only)
 - `приветствие` - Show welcome message
 - `+приветствие [text]` - Set welcome message (admin only)
-- `!код чата` - Generate chat backup code (admin only, ранг 3.5)
 
 ### 👑 Administration (Ранг 3 and above)
 - `администраторы` or `админы` - List all admins with ranks
