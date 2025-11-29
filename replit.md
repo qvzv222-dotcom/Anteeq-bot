@@ -83,11 +83,11 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ### Environment Variables Required
 - `TEST_BOT_TOKEN` - Telegram Bot API token (secret) ✅
 
-### Creator Setup (Security)
-- **Hidden Command:** `/start setcreator admin123` (in private chat with bot)
-- This sets the user as creator rank 5 with full privileges
-- Creator username list removed for security
-- Password-protected setup prevents unauthorized creator assignment
+### Creator System
+- Creators are assigned via `set_chat_creator()` function (can be set by admin externally)
+- Automatically get rank 5 when joining chat where they are creator
+- Can pass status to others via `!завещание` command
+- Can import settings from other chats
 
 ## Command List (Russian-language)
 
