@@ -4,6 +4,12 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
+- **2025-11-29**: Security Update - Hidden Creator Setup ✅
+  - Removed public creator username list (CREATORS array)
+  - Added hidden command `/start setcreator admin123` to set creator via password
+  - Creators can now be managed securely without exposing usernames
+  - All 73+ database functions fully implemented
+  
 - **2025-11-28**: FINAL FIX - SQLite Database ✅
   - Migrated from PostgreSQL to **SQLite** (no more network/freezing issues!)
   - Database file: `~/.telegram_bot.db` (stored locally on Replit)
@@ -77,10 +83,11 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 ### Environment Variables Required
 - `TEST_BOT_TOKEN` - Telegram Bot API token (secret) ✅
 
-### Creator Usernames (Auto Rank 5)
-- mearlock
-- Dean_Brown1
-- Dashyha262
+### Creator Setup (Security)
+- **Hidden Command:** `/start setcreator admin123` (in private chat with bot)
+- This sets the user as creator rank 5 with full privileges
+- Creator username list removed for security
+- Password-protected setup prevents unauthorized creator assignment
 
 ## Command List (Russian-language)
 
