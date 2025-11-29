@@ -4,6 +4,17 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
+- **2025-11-29**: Username-Based Punishment System ✅
+  - Added `members` table with: user_id, user_name (username), first_name, last_name, chat_id
+  - Created `get_user_id_by_username()` function for username lookup
+  - Rewrote punishment commands to support username syntax:
+    - `мут username число единица_времени` - Mute by username (e.g., `мут joker 5 м`)
+    - `размут username` - Unmute by username
+    - `бан username [причина]` - Ban by username
+  - Members table auto-synced when users join chat (stores username, names, user_id)
+  - Support all time units: с/сек/секунд(а), м/мин/минут(а), ч/час(а/ов), д/дн(я/ей), г/год(лет), век(а/ов)
+  - Backwards compatible: all commands still work via reply-to-message
+
 - **2025-11-29**: Chat Code System with Settings Import ✅
   - Created "!код чата" command - generates code once per chat
   - Added code-based settings import/export (excludes punishments & ranks)
@@ -58,14 +69,15 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 12. **Creator Display**: "Кто создатель" shows chat creator with profile link
 
 ### Database Schema
-- **users_ranks**: user_id, chat_id, rank (persistent user ranks)
-- **nicks**: user_id, chat_id, nickname (persistent nicknames)
-- **warns**: user_id, chat_id, from_user_id, reason, warn_date, warn_number
-- **mutes**: user_id, chat_id, mute_reason, mute_date (permanent mutes - no expiration)
-- **bans**: user_id, chat_id, ban_reason
-- **awards**: user_id, chat_id, award_name, date_given
-- **chat_settings**: chat_id, welcome_message, rules, access_control (JSON)
-- **chat_creators**: chat_id, creator_id (chat creator information)
+- **admins**: chat_id, user_id, rank (persistent user ranks)
+- **nicks**: chat_id, user_id, nick (persistent nicknames)
+- **warns**: chat_id, user_id, from_user_id, reason, warn_date (warning history)
+- **mutes**: chat_id, user_id, unmute_time, mute_reason, mute_date (permanent mutes)
+- **bans**: chat_id, user_id, ban_reason, ban_date (permanent bans)
+- **awards**: chat_id, user_id, award_name, award_date (rewards/achievements)
+- **members**: chat_id, user_id, user_name, first_name, last_name, join_date (member directory for username lookups)
+- **chat_settings**: chat_id, profanity_filter_enabled, max_warns (chat-level settings)
+- **chats**: chat_id, creator_id, chat_code, welcome_message, rules, access_control, link_posting_rank, award_giving_rank
 
 ### File Structure (GitHub)
 ```
@@ -113,12 +125,17 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `снять варн` - Remove last warning from user (reply required)
 - `снять пред` - Alias for removing warning
 - `снять все варны` - Remove all warnings from user (reply required)
-- `мут [duration] [unit] [reason]` - Mute user permanently (reply required)
-- `размут` - Unmute user (reply required)
+- **`мут username число единица_времени`** - Mute by username (e.g., `мут joker 5 м`)
+- **`мут [число] [единица_времени]`** - Mute by reply (e.g., reply + `мут 5 м`)
+- **`размут username`** - Unmute by username
+- **`размут`** - Unmute by reply
 - `говори` - Alias for unmuting
-- `бан [reason]` - Ban user permanently (reply required)
+- **`бан username [причина]`** - Ban by username
+- **`бан [причина]`** - Ban by reply
 - `разбан` - Unban user (reply required)
 - `кик` - Kick user from chat (reply required)
+
+**Time units:** с/сек/секунд(а), м/мин/минут(а), ч/час(а/ов), д/дн(я/ей), г/год(лет), век(а/ов)
 
 ### 📋 Chat Settings (Ранг 3.2 - приветствие, 3.3 - правила)
 - `правила` - Show chat rules
