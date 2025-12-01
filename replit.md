@@ -125,6 +125,7 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 - `ник` - Check your current nickname
 - `ник [@user]` - Check another user's nickname
 - `ники` - List all nicknames in chat with clickable links
+- `!без ников` - Show list of members WITHOUT nicknames (find who needs to set one)
 - `+ник другому [nickname]` - Set nickname for another user (reply required)
 - `-ник другому` - Remove nickname from another user (reply required)
 
