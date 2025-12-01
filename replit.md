@@ -4,6 +4,14 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
+- **2025-12-01**: Voice & Video Message Transcription ✅
+  - **Automatic transcription**: Bot converts voice messages and video notes to text
+  - **Google Speech Recognition**: Free tier (60 min/month), excellent Russian support
+  - **Auto-detection**: Works on `voice` and `video_note` Telegram message types
+  - **User-friendly replies**: Shows transcription with user mention as clickable link
+  - **Error handling**: Graceful messages for unclear audio or service issues
+  - **SpeechRecognition library**: Uses Google's speech-to-text API under the hood
+
 - **2025-11-29**: Complete Auto-Unmute & Username Punishment System ✅
   - **Punishment commands by username**: `варн @username`, `преды @username`, `мут @username`, `размут @username`, `бан @username`
   - **Auto-unmute with timing**: Job checks every 5 seconds for expired mutes
@@ -67,6 +75,7 @@ A comprehensive Telegram bot for managing chat groups with advanced features inc
 10. **Member Gathering**: "Сбор" command to ping all members
 11. **Nickname Listing**: "Ники" command shows all nicknames with clickable links
 12. **Creator Display**: "Кто создатель" shows chat creator with profile link
+13. **Voice Transcription**: 🎤 Automatic transcription of voice messages and video notes to text
 
 ### Database Schema
 - **admins**: chat_id, user_id, rank (persistent user ranks)
