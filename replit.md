@@ -4,6 +4,16 @@
 A comprehensive Telegram bot for managing chat groups with advanced features including user ranks, nicknames, warnings, mutes, bans, customizable access control, and persistent PostgreSQL storage. Running on Replit only with pure polling architecture.
 
 ## Recent Changes
+- **2025-12-01**: Advanced Russian Punctuation & Comma Rules ✅
+  - **Морфологический анализ** (pymorphy2): Автоматическое распознавание частей речи
+  - **Запятые перед союзами**: "но", "а", "зато", "да", "однако", "же", "ведь" 
+    - Пример: "Служить бы рад, но прислуживаться тошно"
+  - **Запятые в перечислениях БЕЗ союза**: Между подряд идущими существительными
+    - Пример: "яблоки груши апельсины" → "яблоки, груши, апельсины"
+  - **Запятые со связующими союзами**: "и", "или", "либо"
+    - Пример: "яблоки и груши" → "яблоки, и груши"
+  - **Капитализация**: Первая буква в начале и после точки/вопроса/восклицания
+
 - **2025-12-01**: Voice & Video Message Transcription ✅
   - **Automatic transcription**: Bot converts voice messages and video notes to text
   - **Google Speech Recognition**: Free tier (60 min/month), excellent Russian support
