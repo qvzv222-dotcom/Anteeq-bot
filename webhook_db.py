@@ -176,3 +176,151 @@ def get_all_nicks():
     cursor.close()
     conn.close()
     return nicks
+
+def save_chat(chat_id: int, creator_id: int = None):
+    """Сохранить чат"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO chats (chat_id, creator_id) 
+        VALUES (%s, %s)
+        ON CONFLICT (chat_id) DO NOTHING
+    ''', (chat_id, creator_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def get_chat(chat_id: int):
+    """Получить данные чата"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT * FROM chats WHERE chat_id = %s', (chat_id,))
+    chat = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return chat
+
+def update_chat_welcome(chat_id: int, welcome_message: str):
+    """Обновить приветствие чата"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE chats SET welcome_message = %s WHERE chat_id = %s
+    ''', (welcome_message, chat_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def update_chat_rules(chat_id: int, rules: str):
+    """Обновить правила чата"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE chats SET rules = %s WHERE chat_id = %s
+    ''', (rules, chat_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def update_access_control(chat_id: int, access_control: dict):
+    """Обновить доступы к командам"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE chats SET access_control = %s WHERE chat_id = %s
+    ''', (Json(access_control), chat_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def add_warn(chat_id: int, user_id: int, from_user_id: int, reason: str):
+    """Добавить предупреждение"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO warns (chat_id, user_id, from_user_id, reason, warn_date)
+        VALUES (%s, %s, %s, %s, %s)
+    ''', (chat_id, user_id, from_user_id, reason, datetime.now()))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def get_warns(chat_id: int, user_id: int):
+    """Получить предупреждения пользователя"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('''
+        SELECT * FROM warns 
+        WHERE chat_id = %s AND user_id = %s
+        ORDER BY warn_date DESC
+    ''', (chat_id, user_id))
+    warns = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return warns
+
+def remove_warn(chat_id: int, user_id: int):
+    """Удалить последнее предупреждение"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        DELETE FROM warns 
+        WHERE id = (
+            SELECT id FROM warns 
+            WHERE chat_id = %s AND user_id = %s
+            ORDER BY warn_date DESC LIMIT 1
+        )
+    ''', (chat_id, user_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def add_mute(chat_id: int, user_id: int, unmute_time, mute_reason: str):
+    """Добавить мут"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO mutes (chat_id, user_id, unmute_time, mute_reason, mute_date)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (chat_id, user_id) 
+        DO UPDATE SET unmute_time = %s, mute_reason = %s, mute_date = %s
+    ''', (chat_id, user_id, unmute_time, mute_reason, datetime.now(), 
+          unmute_time, mute_reason, datetime.now()))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def remove_mute(chat_id: int, user_id: int):
+    """Удалить мут"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        DELETE FROM mutes WHERE chat_id = %s AND user_id = %s
+    ''', (chat_id, user_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def add_ban(chat_id: int, user_id: int, ban_reason: str):
+    """Добавить бан"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO bans (chat_id, user_id, ban_reason, ban_date)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (chat_id, user_id) DO NOTHING
+    ''', (chat_id, user_id, ban_reason, datetime.now()))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def remove_ban(chat_id: int, user_id: int):
+    """Удалить бан"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        DELETE FROM bans WHERE chat_id = %s AND user_id = %s
+    ''', (chat_id, user_id))
+    conn.commit()
+    cursor.close()
+    conn.close()

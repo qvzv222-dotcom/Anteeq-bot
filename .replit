@@ -26,6 +26,15 @@ author = "agent"
 task = "shell.exec"
 args = "python test_main.py"
 
+[[workflows.workflow]]
+name = "Run Webhook Bot"
+author = 49985061
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python webhook_main.py"
+
 [[ports]]
 localPort = 5000
 externalPort = 5000
