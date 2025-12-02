@@ -4,7 +4,6 @@ import logging
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import Json, RealDictCursor
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +14,7 @@ def get_db_connection():
     if not database_url:
         raise ValueError("DATABASE_URL не установлен в переменных окружения")
     
-    # Render использует postgres://, но psycopg2 требует postgresql://
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
+    # Replit использует postgresql://, это правильный формат
     return psycopg2.connect(database_url)
 
 def init_db():
@@ -133,5 +129,50 @@ def init_db():
     
     print("✅ БД инициализирована (PostgreSQL)")
 
-# Остальные функции БД аналогичны test_db.py, но используют PostgreSQL
-# (Полный код будет слишком длинным, основные изменения - замена ? на %s для параметров)
+# Функции для работы с БД (используют %s вместо ?)
+
+def save_admin_rank(chat_id: int, user_id: int, rank: int):
+    """Сохранить ранг администратора"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO admins (chat_id, user_id, rank) 
+        VALUES (%s, %s, %s)
+        ON CONFLICT (chat_id, user_id) DO UPDATE SET rank = %s
+    ''', (chat_id, user_id, rank, rank))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def get_all_admins():
+    """Получить всех администраторов"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT chat_id, user_id, rank FROM admins')
+    admins = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return admins
+
+def save_nick(chat_id: int, user_id: int, nick: str):
+    """Сохранить ник пользователя"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO nicks (chat_id, user_id, nick) 
+        VALUES (%s, %s, %s)
+        ON CONFLICT (chat_id, user_id) DO UPDATE SET nick = %s
+    ''', (chat_id, user_id, nick, nick))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def get_all_nicks():
+    """Получить все ники"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT chat_id, user_id, nick FROM nicks')
+    nicks = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return nicks
